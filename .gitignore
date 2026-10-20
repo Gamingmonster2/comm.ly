@@ -1,0 +1,13 @@
+node_modules/
+.tools/
+prototype/shots/
+.dev.vars
+.env
+dist/
+
+# local environment artefacts
+acl-recovery/
+Cyber Michelangelo/
+.DS_Store
+Thumbs.db
+*.log

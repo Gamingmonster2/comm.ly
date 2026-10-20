@@ -1,0 +1,21 @@
+{
+  "name": "comly-network",
+  "version": "0.2.0",
+  "private": true,
+  "description": "comm.ly network — link shortening platform. comm.ly (home brand) + independently branded network engines on Cloudflare Pages.",
+  "type": "module",
+  "scripts": {
+    "build": "node build/build.mjs",
+    "matrix": "node scripts/matrix.mjs",
+    "serve": "node scripts/serve.mjs commly 4174",
+    "preview:prototype": "node prototype/server.mjs",
+    "verify": "node prototype/verify.mjs",
+    "test": "node prototype/verify.mjs && node tools/dom-test.mjs",
+    "test:dom": "node tools/dom-test.mjs",
+    "shots": "node tools/screenshots.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "playwright": "^1.64.1"
+  }
+}

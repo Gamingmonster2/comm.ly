@@ -1,0 +1,48 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  matrix:
+    name: Resolve sites
+    runs-on: ubuntu-latest
+    outputs:
+      sites: ${{ steps.set.outputs.sites }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: set
+        name: Read site registry
+        run: echo "sites=$(node scripts/matrix.mjs)" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy ${{ matrix.site }}
+    needs: matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        site: ${{ fromJson(needs.matrix.outputs.sites) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build ${{ matrix.site }}
+        run: node build/build.mjs --site=${{ matrix.site }}
+      - name: Deploy ${{ matrix.site }} to Pages project comly-${{ matrix.site }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/${{ matrix.site }} --project-name=comly-${{ matrix.site }} --branch=main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
