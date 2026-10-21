@@ -43,6 +43,9 @@ function urlFor(site, key, lang) {
     network: { ar: '/network/', en: '/en/network/' },
     pricing: { ar: '/pricing/', en: '/en/pricing/' },
     privacy: { ar: '/privacy/', en: '/en/privacy/' },
+    login: { ar: '/login/', en: '/en/login/' },
+    register: { ar: '/register/', en: '/en/register/' },
+    app: { ar: '/app/', en: '/en/app/' },
     terms: { ar: '/terms/', en: '/en/terms/' },
     contact: { ar: '/contact/', en: '/en/contact/' }
   };
@@ -529,7 +532,7 @@ function pricingPage({ site, lang, brand, plans, addons }) {
               <div class="price-amount">${esc(l(plan.price, lang))} <span>${esc(l(plan.period, lang))}</span></div>
             <p class="price-desc">${esc(l(plan.desc, lang))}</p>
             <ul class="plan-list">${plan.features.map((feature) => `<li><span class="check">✓</span><span>${esc(l(feature, lang))}</span></li>`).join('')}</ul>
-            <a class="btn ${plan.featured ? 'btn-primary' : 'btn-ghost'} plan-cta" href="${plan.href}">${esc(l(plan.cta, lang))}</a>
+            <a class="btn ${plan.featured ? 'btn-primary' : 'btn-ghost'} plan-cta" href="${plan.href === '#' ? urlFor(site, 'register', lang) : plan.href === '#contact' ? urlFor(site, 'contact', lang) : plan.href}">${esc(l(plan.cta, lang))}</a>
           </article>`).join('')}
         </div>
 
@@ -714,6 +717,102 @@ function contactPage({ site, lang, brand }) {
 /* ------------------------------------------------------------------ */
 /* Site renderer                                                       */
 /* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ */
+/* Accounts: login / register / app dashboard                          */
+/* ------------------------------------------------------------------ */
+function authPage({ kind, site, lang }) {
+  const ar = lang === 'ar';
+  const isLogin = kind === 'login';
+  const other = isLogin ? urlFor(site, 'register', lang) : urlFor(site, 'login', lang);
+  return `<main>
+    <section class="section">
+      <div class="container legal" style="max-width:520px">
+        <span class="eyebrow">${ar ? 'الحساب' : 'Account'}</span>
+        <h1>${isLogin ? (ar ? 'تسجيل الدخول' : 'Sign in') : (ar ? 'إنشاء حساب' : 'Create account')}</h1>
+        <p class="lead">${isLogin
+          ? (ar ? 'ادخل لإدارة روابطك وتحليلاتك.' : 'Sign in to manage your links and analytics.')
+          : (ar ? 'حساب مجاني: 200 رابط شهرياً وتحليلات 30 يوماً.' : 'Free account: 200 links/month and 30-day analytics.')}</p>
+        <form class="contact-form" id="authForm" data-kind="${kind}">
+          ${isLogin ? '' : `<label class="opt-field" for="nameInput"><span>${ar ? 'الاسم' : 'Name'}</span><input id="nameInput" name="name" type="text" autocomplete="name" maxlength="80" required /></label>`}
+          <label class="opt-field" for="emailInput" style="margin-top:10px"><span>${ar ? 'البريد' : 'Email'}</span><input id="emailInput" name="email" type="email" autocomplete="email" required /></label>
+          <label class="opt-field" for="passwordInput" style="margin-top:10px"><span>${ar ? 'كلمة المرور' : 'Password'}</span><input id="passwordInput" name="password" type="password" minlength="8" autocomplete="${isLogin ? 'current-password' : 'new-password'}" required /></label>
+          <button class="btn btn-primary" type="submit" style="margin-top:16px">${isLogin ? (ar ? 'دخول' : 'Sign in') : (ar ? 'إنشاء الحساب' : 'Create account')}</button>
+          <p id="authStatus" style="margin-top:12px;font-size:13.5px;color:var(--muted)"></p>
+        </form>
+        <p style="margin-top:20px;font-size:13.5px"><a href="${other}" style="color:var(--accent)">${isLogin
+          ? (ar ? 'ليس لديك حساب؟ سجّل الآن' : 'No account? Register now')
+          : (ar ? 'لديك حساب؟ سجّل الدخول' : 'Have an account? Sign in')}</a></p>
+      </div>
+    </section>
+  </main>`;
+}
+
+function appPage({ site, lang }) {
+  const ar = lang === 'ar';
+  const t = (arText, enText) => (ar ? arText : enText);
+  return `<main>
+    <section class="section">
+      <div class="container">
+        <div class="dash-page-head" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+          <div>
+            <span class="eyebrow">${t('لوحة الحساب', 'Account dashboard')}</span>
+            <h1 style="font-size:1.7rem;margin:10px 0 4px" id="who">…</h1>
+            <p style="color:var(--muted-2);font-size:13px;margin:0">comm.ly</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <a class="btn btn-ghost btn-sm" href="${urlFor(site, 'home', lang)}">${t('الموقع', 'Site')}</a>
+            <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">${t('خروج', 'Log out')}</button>
+          </div>
+        </div>
+
+        <div class="kpi-grid" style="margin-top:22px">
+          <div class="kpi"><div class="kpi-label">${t('الروابط', 'Links')}</div><div class="kpi-value" id="statLinks">0</div></div>
+          <div class="kpi"><div class="kpi-label">${t('النقرات', 'Clicks')}</div><div class="kpi-value" id="statClicks">0</div></div>
+          <div class="kpi"><div class="kpi-label">${t('حد الخطة', 'Plan limit')}</div><div class="kpi-value" id="statPlan">—</div></div>
+          <div class="kpi"><div class="kpi-label">${t('روابط هذا الشهر', 'Links this month')}</div><div class="kpi-value" id="statMonth">0</div></div>
+        </div>
+
+        <div class="links-table-wrap" style="margin-top:20px">
+          <div class="links-table-head">
+            <h2>${t('روابطك', 'Your links')}</h2>
+            <span class="mono" style="font-size:11px;color:var(--muted-2)">comm.ly</span>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="links">
+              <thead><tr>
+                <th>${t('الرابط', 'Link')}</th>
+                <th>${t('الوجهة', 'Destination')}</th>
+                <th>${t('النقرات', 'Clicks')}</th>
+                <th>${t('أُنشئ', 'Created')}</th>
+                <th></th>
+              </tr></thead>
+              <tbody id="linksBody"></tbody>
+            </table>
+          </div>
+          <p id="emptyState" style="padding:18px;color:var(--muted-2);font-size:13.5px;display:none">${t('لا توجد روابط بعد — أنشئ أول رابط.', 'No links yet — create your first one.')}</p>
+        </div>
+
+        <form id="newLinkForm" class="shorten-card" style="margin-top:20px;padding:16px">
+          <div class="shorten-main">
+            <label class="field-url"><input id="linkUrl" type="url" required placeholder="${t('الصق الرابط الطويل…', 'Paste the long link…')}" /></label>
+            <button class="btn btn-primary" type="submit">${t('أنشئ الرابط', 'Create link')}</button>
+          </div>
+          <div class="shorten-options">
+            <label class="opt-field"><span class="suffix">comm.ly/</span><input id="linkSlug" type="text" maxlength="24" placeholder="${t('كود مخصص (اختياري)', 'custom-code (optional)')}" /></label>
+            <label class="opt-field"><select id="linkExpiry">
+              <option value="0">${t('بلا انتهاء', 'Never')}</option>
+              <option value="24">${t('24 ساعة', '24 hours')}</option>
+              <option value="168">${t('7 أيام', '7 days')}</option>
+              <option value="720">${t('30 يوماً', '30 days')}</option>
+            </select></label>
+          </div>
+          <p id="dashStatus" style="margin:12px 4px 0;font-size:13px;color:var(--muted)"></p>
+        </form>
+      </div>
+    </section>
+  </main>`;
+}
+
 export function renderSite({ site, brand, sites, plans, addons }) {
   const siteCss = `
     :root { --c1: ${site.colors[0]}; --c2: ${site.colors[1]}; --accent: ${site.colors[0]}; --accent-2: ${site.colors[1]}; --accent-3: ${site.accent3}; --grad: linear-gradient(96deg, ${site.colors[0]}, ${site.colors[1]} 60%, ${site.accent3}); }
@@ -730,6 +829,9 @@ export function renderSite({ site, brand, sites, plans, addons }) {
   ];
   if (site.role === 'main') {
     defs.push({ key: 'pricing', titleAr: 'الأسعار والخطط — comm.ly', titleEn: 'Pricing & plans — comm.ly', descAr: 'خطط مجانية وسخية، وأسعار أقل من المنافسين بنسبة 40–80%.', descEn: 'Generous free plan and pricing 40–80% below competitors.' });
+    defs.push({ key: 'login', titleAr: 'تسجيل الدخول — comm.ly', titleEn: 'Sign in — comm.ly', descAr: 'ادخل إلى حسابك في شبكة comm.ly.', descEn: 'Sign in to your comm.ly network account.' });
+    defs.push({ key: 'register', titleAr: 'إنشاء حساب — comm.ly', titleEn: 'Create account — comm.ly', descAr: 'حساب مجاني: 200 رابط شهرياً وتحليلات.', descEn: 'Free account: 200 links/month and analytics.' });
+    defs.push({ key: 'app', titleAr: 'لوحة الحساب — comm.ly', titleEn: 'Account dashboard — comm.ly', descAr: 'إدارة روابطك وتحليلاتك.', descEn: 'Manage your links and analytics.' });
   }
 
   for (const def of defs) {
@@ -741,6 +843,8 @@ export function renderSite({ site, brand, sites, plans, addons }) {
       if (def.key === 'home') body = homePage({ site, lang, brand, sites, plans });
       else if (def.key === 'network') body = networkPage({ site, lang, brand, sites });
       else if (def.key === 'pricing') body = pricingPage({ site, lang, brand, plans, addons });
+      else if (def.key === 'login' || def.key === 'register') body = authPage({ kind: def.key, site, lang });
+      else if (def.key === 'app') body = appPage({ site, lang });
       else if (def.key === 'privacy' || def.key === 'terms') body = legalContent(def.key, { site, lang, brand });
       else body = contactPage({ site, lang, brand });
 
@@ -764,6 +868,7 @@ export function renderSite({ site, brand, sites, plans, addons }) {
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/assets/theme.js"></script>
   <script src="/assets/app.js"></script>
+  ${site.role === 'main' && ['login', 'register', 'app'].includes(def.key) ? '<script src="/assets/account.js"></script>' : ''}
 </body>
 </html>`;
 

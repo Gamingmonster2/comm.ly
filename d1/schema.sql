@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS links (
   code TEXT NOT NULL UNIQUE,
   url TEXT NOT NULL,
   site_id TEXT NOT NULL,
+  workspace_id INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   expires_at TEXT,
   active INTEGER NOT NULL DEFAULT 1,
@@ -15,6 +16,7 @@ CREATE TABLE IF NOT EXISTS links (
 );
 CREATE INDEX IF NOT EXISTS idx_links_expires ON links (expires_at);
 CREATE INDEX IF NOT EXISTS idx_links_site ON links (site_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_links_workspace ON links (workspace_id, created_at);
 
 CREATE TABLE IF NOT EXISTS daily_stats (
   day TEXT NOT NULL,

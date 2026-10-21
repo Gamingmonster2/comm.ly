@@ -7,10 +7,11 @@
  * Each deployment gets a generated `_lib/site-config.js` from the build.
  */
 import { SITE } from './site-config.js';
+import { handleAuthRoute, handleLinksRoute, handleLookup } from './links.js';
 
 const RESERVED = new Set([
-  'api', 'assets', 'en', 'ar', 'app', 'admin', 'privacy', 'terms', 'contact',
-  'network', 'pricing', 'about', 'blog', 'docs', 'faq', 'sitemap.xml',
+  'api', 'assets', 'en', 'ar', 'app', 'admin', 'login', 'register', 'privacy', 'terms', 'contact',
+  'network', 'pricing', 'about', 'blog', 'docs', 'faq', 'u', 'sitemap.xml',
   'robots.txt', 'favicon.ico', 'index.html', '404.html', '410.html',
   '_headers', '_routes.json'
 ]);
@@ -213,6 +214,54 @@ async function contact(context, requestUrl) {
   return json({ ok: true });
 }
 
+/**
+ * Provider-agnostic billing webhook.
+ * The payment platform (later) only has to POST:
+ *   { workspaceId, plan, status, currentPeriodEnd, provider, externalId }
+ * signed with BILLING_WEBHOOK_SECRET (header x-webhook-signature).
+ */
+async function billingWebhook(context) {
+  const { request, env } = context;
+  const secret = env.BILLING_WEBHOOK_SECRET;
+  if (!secret) return json({ ok: false, error: 'billing_not_configured' }, 501);
+  if ((request.headers.get('x-webhook-signature') || '') !== secret) return json({ error: 'invalid_signature' }, 401);
+
+  let payload = {};
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ error: 'invalid_json' }, 400);
+  }
+
+  const workspaceId = Number(payload.workspaceId);
+  const plan = String(payload.plan || 'pro');
+  const status = String(payload.status || 'active');
+  const provider = String(payload.provider || 'custom');
+  const externalId = payload.externalId ? String(payload.externalId) : null;
+  const periodEnd = payload.currentPeriodEnd ? String(payload.currentPeriodEnd) : null;
+  if (!workspaceId || !['free', 'pro', 'business', 'agency', 'enterprise'].includes(plan)) {
+    return json({ error: 'invalid_payload' }, 400);
+  }
+
+  try {
+    const existing = await env.DB.prepare('SELECT id FROM subscriptions WHERE workspace_id = ?').bind(workspaceId).first();
+    if (existing) {
+      await env.DB.prepare(
+        'UPDATE subscriptions SET plan = ?, status = ?, provider = ?, external_id = ?, current_period_end = ?, updated_at = ? WHERE id = ?'
+      ).bind(plan, status, provider, externalId, periodEnd, new Date().toISOString(), existing.id).run();
+    } else {
+      await env.DB.prepare(
+        'INSERT INTO subscriptions (workspace_id, plan, status, provider, external_id, current_period_end) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(workspaceId, plan, status, provider, externalId, periodEnd).run();
+    }
+    const effectivePlan = status === 'active' || status === 'trialing' ? plan : 'free';
+    await env.DB.prepare('UPDATE workspaces SET plan = ? WHERE id = ?').bind(effectivePlan, workspaceId).run();
+    return json({ ok: true, plan: effectivePlan, status });
+  } catch {
+    return json({ error: 'storage_failed' }, 500);
+  }
+}
+
 export async function handle(context) {
   const { request, next } = context;
   const url = new URL(request.url);
@@ -221,7 +270,17 @@ export async function handle(context) {
   if (pathname === '/api/health') return json({ ok: true, site: SITE.id, host: url.hostname });
   if (pathname === '/api/shorten' && request.method === 'POST') return shorten(context, url);
   if (pathname === '/api/contact' && request.method === 'POST') return contact(context, url);
-  if (pathname.startsWith('/api/')) return json({ error: 'not_found' }, 404);
+  if (pathname === '/api/lookup') return handleLookup(context);
+  if (pathname === '/api/billing/webhook' && request.method === 'POST') return billingWebhook(context);
+
+  if (pathname.startsWith('/api/')) {
+    const authResponse = await handleAuthRoute(context, pathname);
+    if (authResponse) return authResponse;
+    if (pathname === '/api/links' || pathname.startsWith('/api/links/')) {
+      return handleLinksRoute(context, pathname);
+    }
+    return json({ error: 'not_found' }, 404);
+  }
 
   if (request.method === 'GET' || request.method === 'HEAD') {
     const match = CODE_PATH_RE.exec(pathname);
