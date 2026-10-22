@@ -1,0 +1,8 @@
+﻿# Normalise line endings for everyone (fixes the GitHub Desktop LF/CRLF warning)
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.woff2 binary
