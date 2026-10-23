@@ -6,7 +6,7 @@
  *
  * Each deployment gets a generated `_lib/site-config.js` from the build.
  */
-import { SITE } from './site-config.js';
+import { SITE, NETWORK, siteFor } from './site-config.js';
 import { handleAuthRoute, handleLinksRoute, handleLookup } from './links.js';
 
 const RESERVED = new Set([
@@ -72,7 +72,7 @@ function validateUrl(raw) {
     if (/^(127\.|10\.|0\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(host)) return null;
     if (host === '::1' || host.startsWith('[')) return null;
     /* Block shortening our own network domains (redirect loops). */
-    if (SITE.network.some((entry) => host === entry.host)) return null;
+    if (NETWORK.some((entry) => host === entry.host)) return null;
     return url.toString();
   } catch {
     return null;
@@ -117,7 +117,7 @@ async function shorten(context, requestUrl) {
     try {
       await env.DB.prepare(
         'INSERT INTO links (code, url, site_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'
-      ).bind(code, target, SITE.id, expiresAt, createdAt).run();
+      ).bind(code, target, siteFor(requestUrl.hostname).id, expiresAt, createdAt).run();
       try {
         await env.CACHE.put(`l:${code}`, JSON.stringify({ u: target, e: expiresAt, a: 1 }), {
           expirationTtl: ttl ? Math.min(ttl * 3600, 2_592_000) : 604_800
@@ -127,7 +127,7 @@ async function shorten(context, requestUrl) {
         shortUrl: `https://${requestUrl.hostname}/${code}`,
         code,
         expiresAt,
-        network: SITE.network.map((entry) => entry.host)
+        network: NETWORK.map((entry) => entry.host)
       }, 201);
     } catch (err) {
       if (slug) return json({ error: 'slug_taken' }, 409);

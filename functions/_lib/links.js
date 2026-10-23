@@ -3,6 +3,7 @@
  * Plans are enforced here; links are owned by a workspace.
  */
 import { getSessionUser, sameOrigin } from './auth.js';
+import { NETWORK } from './site-config.js';
 
 export const PLAN_LIMITS = {
   free: { linksPerMonth: 200, trackedClicks: 10_000, domains: 0 },
@@ -263,8 +264,7 @@ export async function handleLookup(context) {
   } catch {
     return json({ error: 'invalid_url' }, 400);
   }
-  const { SITE } = await import('./site-config.js');
-  const knownHost = SITE.network.some((entry) => entry.host === parsed.hostname);
+  const knownHost = NETWORK.some((entry) => entry.host === parsed.hostname);
   if (!knownHost) return json({ error: 'unsupported_host', note: 'Only comm.ly network links can be expanded.' }, 400);
   const code = parsed.pathname.replace(/^\/|\/$/g, '');
   if (!code || code.includes('/')) return json({ found: false, note: 'not a short link' }, 404);
