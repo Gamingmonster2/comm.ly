@@ -192,3 +192,31 @@
     }
   }
 })();
+
+/* Reveal-on-scroll + mobile navigation (generated pages) */
+(function () {
+  'use strict';
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var elements = document.querySelectorAll('.reveal');
+  if (reduce || !('IntersectionObserver' in window)) {
+    elements.forEach(function (el) { el.classList.add('in'); });
+  } else {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+    elements.forEach(function (el) { observer.observe(el); });
+  }
+  var burger = document.getElementById('navBurger');
+  var mobile = document.getElementById('navMobile');
+  if (burger && mobile) {
+    burger.addEventListener('click', function () {
+      var open = mobile.classList.toggle('open');
+      burger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  }
+})();
