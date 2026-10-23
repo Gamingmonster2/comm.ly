@@ -1,0 +1,19 @@
+# comm.ly network — Cloudflare bindings
+# One Pages project per site (build output: dist/<site-id>).
+# Bind these from the Pages dashboard (Settings → Functions → Bindings),
+# or use this file with Wrangler for migrations/CLI workflows.
+
+name = "comly"
+compatibility_date = "2026-10-01"
+
+# Shared by ALL network domains (comm.ly + engines).
+[[d1_databases]]
+binding = "DB"
+database_name = "comly"
+database_id = "417f6acd-60fa-4f88-a85f-f85a05fe0335"
+
+# Redirect cache + rate-limit store. Create with:
+#   wrangler kv namespace create CACHE
+[[kv_namespaces]]
+binding = "CACHE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
