@@ -1,6 +1,6 @@
-# comm.ly network — Cloudflare bindings
+﻿# comm.ly network â€” Cloudflare bindings
 # One Pages project per site (build output: dist/<site-id>).
-# Bind these from the Pages dashboard (Settings → Functions → Bindings),
+# Bind these from the Pages dashboard (Settings â†’ Functions â†’ Bindings),
 # or use this file with Wrangler for migrations/CLI workflows.
 
 name = "comly"
@@ -16,4 +16,5 @@ database_id = "417f6acd-60fa-4f88-a85f-f85a05fe0335"
 #   wrangler kv namespace create CACHE
 [[kv_namespaces]]
 binding = "CACHE"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "e86ee4ad80904265a273d6a4d083bef3"
+
