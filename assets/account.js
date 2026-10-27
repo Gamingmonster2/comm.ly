@@ -83,7 +83,7 @@
           <td class="td-link"><a href="${link.shortUrl}" target="_blank" rel="noopener">${link.code}</a></td>
           <td class="td-dest" title="${link.url}">${link.url}</td>
           <td class="td-clicks">${link.clicks}</td>
-          <td style="color:var(--muted-2);font-size:12px">${(link.createdAt || '').slice(0, 10)}</td>
+          <td style="color:var(--muted-foreground);font-size:12px">${(link.createdAt || '').slice(0, 10)}</td>
           <td>
             <div class="td-actions">
               <button class="icon-btn" data-copy="${link.shortUrl}" title="${t('copy')}">⧉</button>
@@ -94,6 +94,28 @@
       empty.style.display = state.links.length ? 'none' : 'block';
     }
 
+    function renderChart(rows) {
+      const host = document.getElementById('clicksChart');
+      if (!host) return;
+      const values = (rows || []).map((r) => r.clicks);
+      const max = Math.max(1, ...values);
+      const w = 640, h = 160, pad = 8;
+      const step = w / Math.max(1, values.length - 1);
+      const points = values.map((v, i) => `${(i * step).toFixed(1)},${(h - pad - (v / max) * (h - 2 * pad)).toFixed(1)}`).join(' ');
+      const area = `0,${h} ${points} ${w},${h}`;
+      host.innerHTML = `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto" preserveAspectRatio="none"><polygon points="${area}" fill="rgba(250,250,250,0.08)"/><polyline points="${points}" fill="none" stroke="#fafafa" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+    }
+
+    async function loadChart() {
+      const res = await api('/api/stats');
+      if (!res.ok || !res.data.days) return;
+      renderChart(res.data.days);
+      if (res.data.totals) {
+        const clicksEl = document.getElementById('statClicks');
+        if (clicksEl) clicksEl.textContent = res.data.totals.clicks;
+      }
+    }
+
     async function load() {
       message(status, t('loading'));
       const me = await api('/api/auth/me');
@@ -102,6 +124,8 @@
         return;
       }
       document.getElementById('who').textContent = `${t('welcome')}، ${me.data.user.name || me.data.user.email}`;
+      const nameEl = document.getElementById('userName');
+      if (nameEl) nameEl.textContent = me.data.user.name || me.data.user.email;
       const links = await api('/api/links');
       if (!links.ok) {
         message(status, t('configMissing'), true);
@@ -110,6 +134,7 @@
       state = { links: links.data.links || [], plan: links.data.plan, usage: links.data.usage };
       render();
       message(status, '');
+      loadChart();
     }
 
     form.addEventListener('submit', async (event) => {

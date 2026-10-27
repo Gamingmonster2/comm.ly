@@ -39,15 +39,15 @@ export function markSvg(site, size = 38, suffix = 'nav') {
 /* ------------------------------------------------------------------ */
 function urlFor(site, key, lang) {
   const map = {
-    home: { ar: '/', en: '/en/' },
-    network: { ar: '/network/', en: '/en/network/' },
-    pricing: { ar: '/pricing/', en: '/en/pricing/' },
-    privacy: { ar: '/privacy/', en: '/en/privacy/' },
-    login: { ar: '/login/', en: '/en/login/' },
-    register: { ar: '/register/', en: '/en/register/' },
-    app: { ar: '/app/', en: '/en/app/' },
-    terms: { ar: '/terms/', en: '/en/terms/' },
-    contact: { ar: '/contact/', en: '/en/contact/' }
+    home: { en: '/', ar: '/ar/' },
+    network: { en: '/network/', ar: '/ar/network/' },
+    pricing: { en: '/pricing/', ar: '/ar/pricing/' },
+    privacy: { en: '/privacy/', ar: '/ar/privacy/' },
+    login: { en: '/login/', ar: '/ar/login/' },
+    register: { en: '/register/', ar: '/ar/register/' },
+    app: { en: '/app/', ar: '/ar/app/' },
+    terms: { en: '/terms/', ar: '/ar/terms/' },
+    contact: { en: '/contact/', ar: '/ar/contact/' }
   };
   return map[key][lang];
 }
@@ -58,7 +58,7 @@ function absolute(site, key, lang) {
 
 function pricingHref(site, brand, lang) {
   if (site.role === 'main') return urlFor(site, 'pricing', lang);
-  return lang === 'ar' ? `${brand.url}/pricing/` : `${brand.url}/en/pricing/`;
+  return lang === 'ar' ? `${brand.url}/ar/pricing/` : `${brand.url}/pricing/`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -67,20 +67,19 @@ function pricingHref(site, brand, lang) {
 function head({ site, lang, title, description, path, siteCss, jsonLd, extraHead = '' }) {
   const arUrl = absolute(site, path.key, 'ar');
   const enUrl = absolute(site, path.key, 'en');
-  const canonical = lang === 'ar' ? arUrl : enUrl;
+  const canonical = lang === 'en' ? enUrl : arUrl;
   const alternates = `<link rel="alternate" hreflang="ar" href="${arUrl}" />
   <link rel="alternate" hreflang="en" href="${enUrl}" />
-  <link rel="alternate" hreflang="x-default" href="${arUrl}" />`;
+  <link rel="alternate" hreflang="x-default" href="${enUrl}" />`;
 
-  const navFaq = lang === 'ar' ? '/#faq' : '/en/#faq';
   return `<!DOCTYPE html>
-<html lang="${lang}" dir="${lang === 'ar' ? 'rtl' : 'ltr'}" data-theme="light" data-theme-mode="light">
+<html lang="${lang}" dir="${lang === 'ar' ? 'rtl' : 'ltr'}" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(description)}" />
-  <meta name="theme-color" content="#ffffff" />
+  <meta name="theme-color" content="#09090b" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="${canonical}" />
   ${alternates}
@@ -99,19 +98,6 @@ function head({ site, lang, title, description, path, siteCss, jsonLd, extraHead
   <link rel="stylesheet" href="/assets/theme-light.css" />
   <link rel="stylesheet" href="/assets/extra.css" />
   <style>${siteCss}</style>
-  <script>
-    (function () {
-      try {
-        var q = new URLSearchParams(location.search).get('theme');
-        var valid = ['light', 'dark', 'system'];
-        var m = (q && valid.indexOf(q) >= 0) ? q : (localStorage.getItem('comly-theme') || 'light');
-        if (valid.indexOf(m) < 0) m = 'light';
-        var t = m === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : m;
-        document.documentElement.setAttribute('data-theme', t);
-        document.documentElement.setAttribute('data-theme-mode', m);
-      } catch (e) { /* ignore */ }
-    })();
-  </script>
   ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : ''}
   ${extraHead}
 </head>`;
@@ -124,8 +110,8 @@ function nav({ site, lang, brand, pageKey }) {
   const links = [
     { href: urlFor(site, 'network', lang), label: pick(lang, 'الشبكة', 'Network') },
     { href: pricingHref(site, brand, lang), label: pick(lang, 'الأسعار', 'Pricing') },
-    { href: lang === 'ar' ? '/#features' : '/en/#features', label: pick(lang, 'المزايا', 'Features') },
-    { href: lang === 'ar' ? '/#faq' : '/en/#faq', label: pick(lang, 'الأسئلة', 'FAQ') },
+    { href: `${urlFor(site, 'home', lang)}#features`, label: pick(lang, 'المزايا', 'Features') },
+    { href: `${urlFor(site, 'home', lang)}#faq`, label: pick(lang, 'الأسئلة', 'FAQ') },
     { href: urlFor(site, 'contact', lang), label: pick(lang, 'اتصل بنا', 'Contact') }
   ];
   return `<header class="site-nav">
@@ -143,19 +129,8 @@ function nav({ site, lang, brand, pageKey }) {
           ${links.map((link) => `<a href="${link.href}">${esc(link.label)}</a>`).join('')}
         </nav>
         <div class="nav-actions">
-          <div class="theme-switch" role="group" aria-label="${pick(lang, 'مظهر الموقع', 'Color theme')}">
-            <button type="button" data-theme-option="light" title="${pick(lang, 'الوضع النهاري', 'Light mode')}" aria-label="${pick(lang, 'الوضع النهاري', 'Light mode')}" aria-pressed="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-            </button>
-            <button type="button" data-theme-option="dark" title="${pick(lang, 'الوضع الليلي', 'Dark mode')}" aria-label="${pick(lang, 'الوضع الليلي', 'Dark mode')}" aria-pressed="false">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
-            </button>
-            <button type="button" data-theme-option="system" title="${pick(lang, 'حسب النظام', 'System theme')}" aria-label="${pick(lang, 'حسب النظام', 'System theme')}" aria-pressed="false">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-            </button>
-          </div>
-          <a class="lang-toggle" href="${langHref}" hreflang="${otherLang}" aria-label="${pick(lang, 'Switch to English', 'التبديل إلى العربية')}">${pick(lang, 'EN', 'عربي')}</a>
-          <a class="btn btn-primary btn-sm" href="${lang === 'ar' ? '/#shorten' : '/en/#shorten'}">${pick(lang, 'اختصر رابطاً', 'Shorten a link')}</a>
+          <a class="lang-toggle" href="${langHref}" hreflang="${otherLang}" aria-label="${pick(lang, 'Switch to English', 'التبديل إلى العربية')}">${lang === 'ar' ? 'English' : 'العربية'}</a>
+          <a class="btn btn-primary btn-sm" href="${urlFor(site, 'home', lang)}#shorten">${pick(lang, 'اختصر رابطاً', 'Shorten a link')}</a>
           <button class="nav-burger" type="button" aria-label="${pick(lang, 'القائمة', 'Menu')}" aria-expanded="false">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
           </button>
@@ -163,7 +138,7 @@ function nav({ site, lang, brand, pageKey }) {
       </div>
       <div class="nav-mobile" id="navMobile">
         ${links.map((link) => `<a href="${link.href}">${esc(link.label)}</a>`).join('')}
-        <a href="${langHref}" hreflang="${otherLang}">${pick(lang, 'English version', 'النسخة العربية')}</a>
+        <a href="${langHref}" hreflang="${otherLang}">${pick(lang, 'النسخة العربية', 'English version')}</a>
       </div>
     </div>
   </header>`;
@@ -176,7 +151,7 @@ function footer({ site, lang, brand, sites }) {
     { href: urlFor(site, 'contact', lang), label: pick(lang, 'اتصل بنا', 'Contact us') }
   ];
   const network = sites.map((s) => {
-    const href = s.id === site.id ? '#' : `https://${s.host}${lang === 'ar' ? '/' : '/en/'}`;
+    const href = s.id === site.id ? '#' : `https://${s.host}${lang === 'ar' ? '/ar/' : '/'}`;
     const label = s.id === site.id
       ? `${s.host} ${pick(lang, '(أنت هنا)', '(you are here)')}`
       : `${s.host} — ${l(s.tool, lang)}`;
@@ -262,7 +237,7 @@ function shortenCard({ site, lang }) {
         </label>
         <div class="opt-field" style="flex:.8;cursor:default">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
-          <span style="font-size:12.5px;color:var(--ok)">${t('حماية ذكية من التصيّد', 'Smart phishing protection')}</span>
+          <span style="font-size:12.5px;color:var(--success)">${t('حماية ذكية من التصيّد', 'Smart phishing protection')}</span>
         </div>
       </div>
     </form>
@@ -312,7 +287,7 @@ function networkGrid({ site, lang, sites }) {
   return `<div class="network-grid">
     ${sites.map((s) => {
       const here = s.id === site.id;
-      const href = here ? '#' : `https://${s.host}${lang === 'ar' ? '/' : '/en/'}`;
+      const href = here ? '#' : `https://${s.host}${lang === 'ar' ? '/ar/' : '/'}`;
       return `<article class="network-card reveal" style="--c1:${s.colors[0]};--c2:${s.colors[1]}">
         <div class="network-card-head">${markSvg(s, 40, `net-${s.id}-${site.id}`)}
           <span class="status-pill ${here ? 'live' : 'soon'}">${here ? pick(lang, 'أنت هنا', 'you are here') : pick(lang, 'مباشر', 'live')}</span>
@@ -335,8 +310,8 @@ function faqBlock({ site, lang }) {
 
 function ctaBand({ site, lang, brand }) {
   const href = site.role === 'main'
-    ? (lang === 'ar' ? '/pricing/' : '/en/pricing/')
-    : (lang === 'ar' ? `${brand.url}/pricing/` : `${brand.url}/en/pricing/`);
+    ? urlFor(site, 'pricing', lang)
+    : `${brand.url}${lang === 'ar' ? '/ar/pricing/' : '/pricing/'}`;
   return `<div class="cta-band reveal">
     <h2>${pick(lang, 'جاهز تختصر أول رابط؟', 'Ready to shorten your first link?')}</h2>
     <p>${pick(lang,
@@ -353,7 +328,7 @@ function homePage({ site, lang, brand, sites, plans }) {
   const t = (ar, en) => pick(lang, ar, en);
   const networkLine = sites
     .filter((s) => s.id !== site.id)
-    .map((s) => `<a href="https://${s.host}/" class="mono" style="color:var(--accent)">${s.host.replace('.com.ly', '')}</a>`)
+    .map((s) => `<a href="https://${s.host}/" class="mono" style="color:var(--brand)">${s.host.replace('.com.ly', '')}</a>`)
     .join(' · ');
 
   const analyticsMock = site.role === 'main' ? `<section class="section" id="analytics">
@@ -385,9 +360,9 @@ function homePage({ site, lang, brand, sites, plans }) {
             </div>
             <div class="dash-chart">
               <svg viewBox="0 0 420 120" role="img">
-                <path d="M0 96 C 40 92, 60 70, 95 74 S 150 96, 185 66 S 250 30, 285 46 S 350 64, 420 18" fill="none" stroke="#0f766e" stroke-width="2.2" stroke-linecap="round" />
-                <path d="M0 96 C 40 92, 60 70, 95 74 S 150 96, 185 66 S 250 30, 285 46 S 350 64, 420 18 L 420 120 L 0 120 Z" fill="rgba(15,118,110,.18)" />
-                <path d="M0 108 C 50 100, 90 96, 130 88 S 210 78, 260 62 S 340 52, 420 40" fill="none" stroke="#6d28d9" stroke-width="1.6" stroke-dasharray="4 4" opacity=".8" />
+                <path d="M0 96 C 40 92, 60 70, 95 74 S 150 96, 185 66 S 250 30, 285 46 S 350 64, 420 18" fill="none" stroke="#fafafa" stroke-width="2.2" stroke-linecap="round" />
+                <path d="M0 96 C 40 92, 60 70, 95 74 S 150 96, 185 66 S 250 30, 285 46 S 350 64, 420 18 L 420 120 L 0 120 Z" fill="rgba(250, 250, 250, 0.10)" />
+                <path d="M0 108 C 50 100, 90 96, 130 88 S 210 78, 260 62 S 340 52, 420 40" fill="none" stroke="#71717a" stroke-width="1.6" stroke-dasharray="4 4" opacity=".8" />
               </svg>
             </div>
             <div class="country-list">
@@ -413,7 +388,7 @@ function homePage({ site, lang, brand, sites, plans }) {
         <h1 class="hero-title reveal">${esc(l(site.heroA, lang))}<br /><span class="gradient-text">${esc(l(site.heroB, lang))}</span></h1>
         <p class="hero-lead reveal">${esc(l(site.lead, lang))}</p>
         <div class="hero-network-line reveal">
-          <span>${t('جزء من', 'Part of')}</span> <a class="mono" style="color:var(--accent)" href="https://comm.ly/">comm.ly</a>
+          <span>${t('جزء من', 'Part of')}</span> <a class="mono" style="color:var(--brand)" href="https://comm.ly/">comm.ly</a>
           <span class="hero-net-dot"></span>
           <span>${t('يعمل على', 'resolves on')}</span> ${networkLine}
         </div>
@@ -438,10 +413,10 @@ function homePage({ site, lang, brand, sites, plans }) {
         <div class="network-note reveal" style="padding:26px 30px">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-3 7h6l-3 7"/><path d="M5 13 2 22h20l-3-9"/></svg>
           <div>
-            <strong style="display:block;margin-bottom:4px;color:var(--text)">${esc(l(site.toolTitle, lang))}</strong>
+            <strong style="display:block;margin-bottom:4px;color:var(--foreground)">${esc(l(site.toolTitle, lang))}</strong>
             <span>${esc(l(site.toolDesc, lang))}</span>
           </div>
-          <a class="btn btn-ghost btn-sm" style="margin-inline-start:auto" href="${lang === 'ar' ? '/#shorten' : '/en/#shorten'}">${t('جرّب الآن', 'Try now')}</a>
+          <a class="btn btn-ghost btn-sm" style="margin-inline-start:auto" href="${urlFor(site, 'home', lang)}#shorten">${t('جرّب الآن', 'Try now')}</a>
         </div>
       </div>
     </section>
@@ -504,7 +479,7 @@ function networkPage({ site, lang, brand, sites }) {
           <span>${t(
             `العلامة الأساسية للمشروع هي comm.ly. إذا كنت تبحث عن الخطط والأسعار والحساب، فانتقل إلى هناك.`,
             `The project home brand is comm.ly. For plans, pricing and your account, head there.`)}</span>
-          <a class="btn btn-ghost btn-sm" style="margin-inline-start:auto" href="${brand.url}${lang === 'ar' ? '/' : '/en/'}">comm.ly</a>
+          <a class="btn btn-ghost btn-sm" style="margin-inline-start:auto" href="${brand.url}${lang === 'ar' ? '/ar/' : '/'}">comm.ly</a>
         </div>
       </div>
     </section>
@@ -539,7 +514,7 @@ function pricingPage({ site, lang, brand, plans, addons }) {
         <div class="network-note reveal" style="margin-top:28px;align-items:flex-start">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-top:3px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
           <div>
-            <strong style="display:block;color:var(--text);margin-bottom:6px">${t('الإضافات وخيارات الدفع', 'Add-ons & payment options')}</strong>
+            <strong style="display:block;color:var(--foreground);margin-bottom:6px">${t('الإضافات وخيارات الدفع', 'Add-ons & payment options')}</strong>
             <ul class="plan-list" style="margin:0">${addons.map((addon) => `<li><span class="check">✓</span><span>${esc(l(addon, lang))}</span></li>`).join('')}</ul>
           </div>
         </div>
@@ -654,9 +629,9 @@ function legalContent(kind, { site, lang, brand }) {
         <span class="eyebrow">${ar ? 'القانوني' : 'Legal'}</span>
         <h1>${title}</h1>
         <p class="lead">${intro[kind]}</p>
-        <p class="mono" style="font-size:12px;color:var(--muted-2)">${ar ? 'الموقع:' : 'Site:'} ${site.host} · ${ar ? 'آخر تحديث:' : 'Last updated:'} ${today()}</p>
+        <p class="mono" style="font-size:12px;color:var(--muted-foreground)">${ar ? 'الموقع:' : 'Site:'} ${site.host} · ${ar ? 'آخر تحديث:' : 'Last updated:'} ${today()}</p>
         ${body}
-        <p style="margin-top:28px;color:var(--muted)">${ar ? 'لأي استفسار قانوني:' : 'For legal enquiries:'} <a href="mailto:${brand.legalEmail}">${brand.legalEmail}</a></p>
+        <p style="margin-top:28px;color:var(--muted-foreground)">${ar ? 'لأي استفسار قانوني:' : 'For legal enquiries:'} <a href="mailto:${brand.legalEmail}">${brand.legalEmail}</a></p>
       </div>
     </section>
   </main>`;
@@ -679,9 +654,9 @@ function contactPage({ site, lang, brand }) {
           </div>
           <label class="opt-field" for="messageInput" style="margin-top:10px"><span>${ar ? 'الرسالة' : 'Message'}</span><textarea id="messageInput" name="message" required maxlength="3000" rows="6"></textarea></label>
           <button class="btn btn-primary" type="submit" style="margin-top:14px">${ar ? 'أرسل الرسالة' : 'Send message'}</button>
-          <p id="contactStatus" style="margin-top:12px;font-size:13.5px;color:var(--muted)"></p>
+          <p id="contactStatus" style="margin-top:12px;font-size:13.5px;color:var(--muted-foreground)"></p>
         </form>
-        <p style="margin-top:22px;color:var(--muted);font-size:13.5px">${ar ? 'أو راسلنا مباشرة:' : 'Or email us directly:'} <a href="mailto:${brand.supportEmail}">${brand.supportEmail}</a></p>
+        <p style="margin-top:22px;color:var(--muted-foreground);font-size:13.5px">${ar ? 'أو راسلنا مباشرة:' : 'Or email us directly:'} <a href="mailto:${brand.supportEmail}">${brand.supportEmail}</a></p>
         <script>
           (function () {
             var form = document.getElementById('contactForm');
@@ -737,9 +712,9 @@ function authPage({ kind, site, lang }) {
           <label class="opt-field" for="emailInput" style="margin-top:10px"><span>${ar ? 'البريد' : 'Email'}</span><input id="emailInput" name="email" type="email" autocomplete="email" required /></label>
           <label class="opt-field" for="passwordInput" style="margin-top:10px"><span>${ar ? 'كلمة المرور' : 'Password'}</span><input id="passwordInput" name="password" type="password" minlength="8" autocomplete="${isLogin ? 'current-password' : 'new-password'}" required /></label>
           <button class="btn btn-primary" type="submit" style="margin-top:16px">${isLogin ? (ar ? 'دخول' : 'Sign in') : (ar ? 'إنشاء الحساب' : 'Create account')}</button>
-          <p id="authStatus" style="margin-top:12px;font-size:13.5px;color:var(--muted)"></p>
+          <p id="authStatus" style="margin-top:12px;font-size:13.5px;color:var(--muted-foreground)"></p>
         </form>
-        <p style="margin-top:20px;font-size:13.5px"><a href="${other}" style="color:var(--accent)">${isLogin
+        <p style="margin-top:20px;font-size:13.5px"><a href="${other}" style="color:var(--brand)">${isLogin
           ? (ar ? 'ليس لديك حساب؟ سجّل الآن' : 'No account? Register now')
           : (ar ? 'لديك حساب؟ سجّل الدخول' : 'Have an account? Sign in')}</a></p>
       </div>
@@ -750,33 +725,44 @@ function authPage({ kind, site, lang }) {
 function appPage({ site, lang }) {
   const ar = lang === 'ar';
   const t = (arText, enText) => (ar ? arText : enText);
-  return `<main>
-    <section class="section">
-      <div class="container">
-        <div class="dash-page-head" style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
-          <div>
-            <span class="eyebrow">${t('لوحة الحساب', 'Account dashboard')}</span>
-            <h1 style="font-size:1.7rem;margin:10px 0 4px" id="who">…</h1>
-            <p style="color:var(--muted-2);font-size:13px;margin:0">comm.ly</p>
-          </div>
-          <div style="display:flex;gap:8px">
-            <a class="btn btn-ghost btn-sm" href="${urlFor(site, 'home', lang)}">${t('الموقع', 'Site')}</a>
-            <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">${t('خروج', 'Log out')}</button>
-          </div>
+  const icon = (path) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+  return `<div class="app-shell">
+    <aside class="app-sidebar">
+      <a class="app-brand" href="${urlFor(site, 'home', lang)}">${markSvg(site, 28, 'app')}<span>comm.ly</span></a>
+      <a class="app-nav-item active" href="#">${icon('<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>')}<span>${t('الروابط', 'Links')}</span></a>
+      <a class="app-nav-item" href="#">${icon('<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>')}<span>${t('التحليلات', 'Analytics')}</span></a>
+      <a class="app-nav-item" href="#">${icon('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3h-3zM19 19h2v2h-2z"/>')}<span>${t('أكواد QR', 'QR codes')}</span></a>
+      <a class="app-nav-item" href="#">${icon('<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/>')}<span>${t('الشبكة', 'Network')}</span></a>
+      <a class="app-nav-item" href="#">${icon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/>')}<span>${t('الإعدادات', 'Settings')}</span></a>
+      <div class="spacer"></div>
+      <div class="app-user"><div class="avatar">${t('ح', 'U')}</div><div><strong id="userName">…</strong><span>comm.ly</span></div></div>
+    </aside>
+    <div class="app-main">
+      <div class="app-topbar">
+        <span class="mono" style="font-size:13px">${t('نظرة عامة', 'Overview')}</span>
+        <div style="display:flex;align-items:center;gap:8px;margin-inline-start:auto">
+          <a class="lang-toggle" href="${urlFor(site, 'app', lang === 'ar' ? 'en' : 'ar')}">${lang === 'ar' ? 'English' : 'العربية'}</a>
+          <button class="btn btn-primary btn-sm" id="logoutBtn" type="button">${t('خروج', 'Log out')}</button>
         </div>
+      </div>
+      <div class="app-content">
+        <h1 style="font-size:1.5rem;margin:0 0 4px" id="who">…</h1>
+        <p style="color:var(--muted-foreground);font-size:13px;margin:0 0 24px">comm.ly</p>
 
-        <div class="kpi-grid" style="margin-top:22px">
+        <div class="kpi-grid">
           <div class="kpi"><div class="kpi-label">${t('الروابط', 'Links')}</div><div class="kpi-value" id="statLinks">0</div></div>
           <div class="kpi"><div class="kpi-label">${t('النقرات', 'Clicks')}</div><div class="kpi-value" id="statClicks">0</div></div>
           <div class="kpi"><div class="kpi-label">${t('حد الخطة', 'Plan limit')}</div><div class="kpi-value" id="statPlan">—</div></div>
           <div class="kpi"><div class="kpi-label">${t('روابط هذا الشهر', 'Links this month')}</div><div class="kpi-value" id="statMonth">0</div></div>
         </div>
 
-        <div class="links-table-wrap" style="margin-top:20px">
-          <div class="links-table-head">
-            <h2>${t('روابطك', 'Your links')}</h2>
-            <span class="mono" style="font-size:11px;color:var(--muted-2)">comm.ly</span>
-          </div>
+        <div class="chart-card">
+          <div class="chart-head"><h2>${t('النقرات — آخر 14 يوماً', 'Clicks — last 14 days')}</h2><span class="mono">14D</span></div>
+          <div id="clicksChart"></div>
+        </div>
+
+        <div class="links-table-wrap">
+          <div class="links-table-head"><h2>${t('روابطك', 'Your links')}</h2><span class="mono" style="font-size:11px;color:var(--muted-foreground)">comm.ly</span></div>
           <div style="overflow-x:auto">
             <table class="links">
               <thead><tr>
@@ -789,10 +775,10 @@ function appPage({ site, lang }) {
               <tbody id="linksBody"></tbody>
             </table>
           </div>
-          <p id="emptyState" style="padding:18px;color:var(--muted-2);font-size:13.5px;display:none">${t('لا توجد روابط بعد — أنشئ أول رابط.', 'No links yet — create your first one.')}</p>
+          <p id="emptyState" style="padding:18px;color:var(--muted-foreground);font-size:13.5px;display:none">${t('لا توجد روابط بعد — أنشئ أول رابط.', 'No links yet — create your first one.')}</p>
         </div>
 
-        <form id="newLinkForm" class="shorten-card" style="margin-top:20px;padding:16px">
+        <form id="newLinkForm" class="shorten-card" style="margin-top:20px;padding:16px;max-width:none">
           <div class="shorten-main">
             <label class="field-url"><input id="linkUrl" type="url" required placeholder="${t('الصق الرابط الطويل…', 'Paste the long link…')}" /></label>
             <button class="btn btn-primary" type="submit">${t('أنشئ الرابط', 'Create link')}</button>
@@ -806,17 +792,16 @@ function appPage({ site, lang }) {
               <option value="720">${t('30 يوماً', '30 days')}</option>
             </select></label>
           </div>
-          <p id="dashStatus" style="margin:12px 4px 0;font-size:13px;color:var(--muted)"></p>
+          <p id="dashStatus" style="margin:12px 4px 0;font-size:13px;color:var(--muted-foreground)"></p>
         </form>
       </div>
-    </section>
-  </main>`;
+    </div>
+  </div>`;
 }
 
 export function renderSite({ site, brand, sites, plans, addons }) {
   const siteCss = `
-    :root { --c1: ${site.colors[0]}; --c2: ${site.colors[1]}; --accent: ${site.colors[0]}; --accent-2: ${site.colors[1]}; --accent-3: ${site.accent3}; --grad: linear-gradient(96deg, ${site.colors[0]}, ${site.colors[1]} 60%, ${site.accent3}); }
-    html[data-theme="light"] { --accent: color-mix(in srgb, ${site.colors[0]} 62%, #0f172a); --accent-2: color-mix(in srgb, ${site.colors[1]} 72%, #0f172a); }
+    :root { --brand: #fafafa; --brand-2: #a1a1aa; --c1: ${site.colors[0]}; --c2: ${site.colors[1]}; }
   `;
 
   const pages = [];

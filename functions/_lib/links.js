@@ -289,3 +289,33 @@ export async function handleLookup(context) {
     host: parsed.hostname
   });
 }
+
+export async function handleStatsRoute(context) {
+  const { env, request } = context;
+  const user = await getSessionUser(env, request);
+  if (!user || !user.workspaceId) return json({ error: 'unauthorized' }, 401);
+
+  const days = [];
+  const now = new Date();
+  for (let i = 13; i >= 0; i -= 1) {
+    days.push(new Date(now.getTime() - i * 86_400_000).toISOString().slice(0, 10));
+  }
+
+  const rows = await env.DB.prepare(
+    `SELECT day, SUM(clicks) AS clicks FROM daily_stats
+     WHERE code IN (SELECT code FROM links WHERE workspace_id = ?) AND day >= ?
+     GROUP BY day ORDER BY day`
+  ).bind(user.workspaceId, days[0]).all();
+
+  const byDay = {};
+  for (const row of rows.results || []) byDay[row.day] = row.clicks || 0;
+
+  const totals = await env.DB.prepare(
+    'SELECT COUNT(*) AS links, COALESCE(SUM(clicks), 0) AS clicks FROM links WHERE workspace_id = ?'
+  ).bind(user.workspaceId).first();
+
+  return json({
+    days: days.map((day) => ({ day, clicks: byDay[day] || 0 })),
+    totals: { links: (totals && totals.links) || 0, clicks: (totals && totals.clicks) || 0 }
+  });
+}

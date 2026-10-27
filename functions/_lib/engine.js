@@ -7,7 +7,7 @@
  * Each deployment gets a generated `_lib/site-config.js` from the build.
  */
 import { SITE, NETWORK, siteFor } from './site-config.js';
-import { handleAuthRoute, handleLinksRoute, handleLookup } from './links.js';
+import { handleAuthRoute, handleLinksRoute, handleLookup, handleStatsRoute } from './links.js';
 
 const RESERVED = new Set([
   'api', 'assets', 'en', 'ar', 'app', 'admin', 'login', 'register', 'privacy', 'terms', 'contact',
@@ -271,6 +271,7 @@ export async function handle(context) {
   if (pathname === '/api/shorten' && request.method === 'POST') return shorten(context, url);
   if (pathname === '/api/contact' && request.method === 'POST') return contact(context, url);
   if (pathname === '/api/lookup') return handleLookup(context);
+  if (pathname === '/api/stats') return handleStatsRoute(context);
   if (pathname === '/api/billing/webhook' && request.method === 'POST') return billingWebhook(context);
 
   if (pathname.startsWith('/api/')) {
