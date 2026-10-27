@@ -33,7 +33,7 @@
       var saved = localStorage.getItem(KEY);
       if (saved && VALID.indexOf(saved) >= 0) return saved;
     } catch (e) { /* ignore */ }
-    return 'light'; /* default = light (white base) */
+    return 'system'; /* default = system preference */
   }
 
   mode = stored();

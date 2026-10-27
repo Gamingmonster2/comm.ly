@@ -98,6 +98,19 @@ function head({ site, lang, title, description, path, siteCss, jsonLd, extraHead
   <link rel="stylesheet" href="/assets/theme-light.css" />
   <link rel="stylesheet" href="/assets/extra.css" />
   <style>${siteCss}</style>
+  <script>
+    (function () {
+      try {
+        var q = new URLSearchParams(location.search).get('theme');
+        var valid = ['light', 'dark', 'system'];
+        var m = (q && valid.indexOf(q) >= 0) ? q : (localStorage.getItem('comly-theme') || 'system');
+        if (valid.indexOf(m) < 0) m = 'system';
+        var t = m === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : m;
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.setAttribute('data-theme-mode', m);
+      } catch (e) { /* ignore */ }
+    })();
+  </script>
   ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : ''}
   ${extraHead}
 </head>`;
@@ -129,6 +142,11 @@ function nav({ site, lang, brand, pageKey }) {
           ${links.map((link) => `<a href="${link.href}">${esc(link.label)}</a>`).join('')}
         </nav>
         <div class="nav-actions">
+          <div class="theme-switch" role="group" aria-label="${pick(lang, 'مظهر الموقع', 'Theme')}">
+            <button type="button" data-theme-option="light" title="${pick(lang, 'الوضع النهاري', 'Light')}" aria-label="${pick(lang, 'الوضع النهاري', 'Light')}" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+            <button type="button" data-theme-option="dark" title="${pick(lang, 'الوضع الليلي', 'Dark')}" aria-label="${pick(lang, 'الوضع الليلي', 'Dark')}" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
+            <button type="button" data-theme-option="system" title="${pick(lang, 'حسب النظام', 'System')}" aria-label="${pick(lang, 'حسب النظام', 'System')}" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+          </div>
           <a class="lang-toggle" href="${langHref}" hreflang="${otherLang}" aria-label="${pick(lang, 'Switch to English', 'التبديل إلى العربية')}">${lang === 'ar' ? 'English' : 'العربية'}</a>
           <a class="btn btn-primary btn-sm" href="${urlFor(site, 'home', lang)}#shorten">${pick(lang, 'اختصر رابطاً', 'Shorten a link')}</a>
           <button class="nav-burger" type="button" aria-label="${pick(lang, 'القائمة', 'Menu')}" aria-expanded="false">

@@ -436,3 +436,53 @@ table.links tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
   .app-topbar { padding: 10px 16px; }
   .stat { padding: 16px 18px; }
 }
+
+/* ---------- Light theme (shadcn/ui light) ---------- */
+html[data-theme='light'] {
+  --background: #ffffff;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #7f1d1d;
+  --destructive-foreground: #fafafa;
+  --success: #16a34a;
+  --warning: #d97706;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #a1a1aa;
+  --brand: #18181b;
+  --brand-2: #52525b;
+}
+html[data-theme='light'] body { background: var(--background); }
+html[data-theme='light'] .site-nav,
+html[data-theme='light'] .app-topbar { background: rgba(255, 255, 255, 0.85); }
+html[data-theme='light'] .bg-grid {
+  background-image: linear-gradient(rgba(9, 9, 11, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(9, 9, 11, 0.04) 1px, transparent 1px);
+}
+html[data-theme='light'] .bg-glow { opacity: 0; }
+html[data-theme='light'] .field-url,
+html[data-theme='light'] .opt-field { background: #fafafa; }
+html[data-theme='light'] .btn-primary:hover:not(:disabled) { background: #27272a; }
+
+/* Product screenshot stays dark in both themes */
+.dash-mock {
+  background: #0b0b0d; border-color: #27272a;
+  --border: #27272a; --card: #0c0c0e; --foreground: #fafafa; --muted-foreground: #a1a1aa;
+  color: #fafafa;
+}
+
+/* ---------- Theme switcher ---------- */
+.theme-switch { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--radius); border: 1px solid var(--border); }
+.theme-switch button { width: 28px; height: 28px; border: 0; background: transparent; color: var(--muted-foreground); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.theme-switch button:hover { color: var(--foreground); }
+.theme-switch button[aria-pressed='true'] { background: var(--secondary); color: var(--foreground); }
