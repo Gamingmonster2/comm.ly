@@ -94,7 +94,7 @@ function head({ site, lang, title, description, path, siteCss, jsonLd, extraHead
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect x='1.5' y='1.5' width='45' height='45' rx='13' fill='%2305060a' stroke='%23${site.colors[0].replace('#', '')}' stroke-width='2'/%3E%3Ccircle cx='24' cy='24' r='7' fill='none' stroke='%23${site.colors[0].replace('#', '')}' stroke-width='3'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/styles.css" />
   <link rel="stylesheet" href="/assets/theme-light.css" />
   <link rel="stylesheet" href="/assets/extra.css" />

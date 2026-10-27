@@ -56,7 +56,7 @@ html[data-theme="light"] {
 /* ---------- Background & atmosphere ---------- */
 html[data-theme="light"] body { background: var(--bg); }
 html[data-theme="light"] .shorten-card { background: linear-gradient(180deg, #ffffff, #f7f9fd); }
-html[data-theme="light"] .bg-glow { opacity: 0.45; }
+html[data-theme="light"] .bg-glow { opacity: 0.22; }
 html[data-theme="light"] .stat, html[data-theme="light"] .price-card:not(.featured) { background: #fbfcfe; }
 html[data-theme="light"] .bg-grid {
   background-image:

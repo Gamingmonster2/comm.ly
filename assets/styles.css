@@ -39,7 +39,7 @@
   --maxw: 1120px;
   --nav-h: 74px;
 
-  --font-ar: 'IBM Plex Sans Arabic', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-ar: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-en: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
 
@@ -84,12 +84,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
   width: 720px; height: 720px; top: -320px; inset-inline-start: 50%;
   transform: translateX(-50%);
   background: radial-gradient(circle, rgba(45, 212, 191, 0.30), transparent 64%);
-  opacity: 0.55;
+  opacity: 0.28;
 }
 .bg-glow-2 {
   width: 580px; height: 580px; top: 60px; inset-inline-end: -220px;
   background: radial-gradient(circle, rgba(139, 92, 246, 0.30), transparent 64%);
-  opacity: 0.45;
+  opacity: 0.22;
 }
 
 /* ---------- Layout helpers ---------- */
