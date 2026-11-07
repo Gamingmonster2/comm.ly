@@ -4,7 +4,7 @@
  */
 const SESSION_COOKIE = 'commly_session';
 const SESSION_TTL_DAYS = 30;
-const PBKDF2_ITERATIONS = 120_000;
+const PBKDF2_ITERATIONS = 100_000; /* Cloudflare Workers Web Crypto caps PBKDF2 at 100,000 */
 
 function b64(bytes) {
   return btoa(String.fromCharCode(...new Uint8Array(bytes)));
