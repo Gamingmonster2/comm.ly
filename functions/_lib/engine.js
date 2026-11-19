@@ -10,14 +10,19 @@ import { SITE, NETWORK, siteFor } from './site-config.js';
 import { handleAuthRoute, handleLinksRoute, handleLookup, handleStatsRoute } from './links.js';
 
 const RESERVED = new Set([
-  'api', 'assets', 'en', 'ar', 'app', 'admin', 'login', 'register', 'privacy', 'terms', 'contact',
+  'api', 'assets', 'b', 'en', 'ar', 'app', 'admin', 'login', 'register', 'privacy', 'terms', 'contact',
   'network', 'pricing', 'about', 'blog', 'docs', 'faq', 'u', 'sitemap.xml',
   'robots.txt', 'favicon.ico', 'index.html', '404.html', '410.html',
   '_headers', '_routes.json'
 ]);
 const SLUG_RE = /^[A-Za-z0-9_-]{3,24}$/;
 const CODE_PATH_RE = /^\/([A-Za-z0-9_-]{2,32})\/?$/;
+const BIO_PATH_RE = /^\/b\/([A-Za-z0-9_-]{3,32})\/?$/;
+const BIO_API_RE = /^\/api\/bio\/([A-Za-z0-9_-]{3,32})\/?$/;
+const HANDLE_RE = /^[a-z0-9][a-z0-9-]{2,31}$/;
+const BIO_THEMES = new Set(['midnight', 'sunrise', 'mint', 'rose']);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const KNOWN_SHORTENERS = /(^|\.)(bit\.ly|tinyurl\.com|t\.co|goo\.gl|is\.gd|ow\.ly|buff\.ly|rebrand\.ly|cutt\.ly|rb\.gy|short\.link|clck\.ru|v\.gd|lnkd\.in|s\.id)$/i;
 
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
@@ -27,17 +32,18 @@ const SECURITY_HEADERS = {
 
 /* Per-isolate burst limiter (cheap first line of defence). */
 const hits = new Map();
-function rateLimited(ip) {
+function rateLimited(ip, bucketName = 'default', limit = 30, windowMs = 60_000) {
   const now = Date.now();
-  const bucket = hits.get(ip) || { count: 0, reset: now + 60_000 };
+  const key = `${bucketName}:${ip}`;
+  const bucket = hits.get(key) || { count: 0, reset: now + windowMs };
   if (now > bucket.reset) {
     bucket.count = 0;
-    bucket.reset = now + 60_000;
+    bucket.reset = now + windowMs;
   }
   bucket.count += 1;
-  hits.set(ip, bucket);
+  hits.set(key, bucket);
   if (hits.size > 5_000) hits.clear();
-  return bucket.count > 30;
+  return bucket.count > limit;
 }
 
 function json(data, status = 200) {
@@ -45,6 +51,15 @@ function json(data, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...SECURITY_HEADERS }
   });
+}
+
+function esc(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function errorPage(kind, lang) {
@@ -63,7 +78,7 @@ function errorPage(kind, lang) {
   });
 }
 
-function validateUrl(raw) {
+function validateUrl(raw, allowNetwork = false) {
   try {
     const url = new URL(raw);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
@@ -71,8 +86,8 @@ function validateUrl(raw) {
     if (!host || host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return null;
     if (/^(127\.|10\.|0\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(host)) return null;
     if (host === '::1' || host.startsWith('[')) return null;
-    /* Block shortening our own network domains (redirect loops). */
-    if (NETWORK.some((entry) => host === entry.host)) return null;
+    /* Shortening our own network domains would create redirect loops. Bio links may point there. */
+    if (!allowNetwork && NETWORK.some((entry) => host === entry.host)) return null;
     return url.toString();
   } catch {
     return null;
@@ -88,10 +103,43 @@ function randomCode(length = 7) {
   return out;
 }
 
+async function createLinkRecord(context, target, slug, hours, host) {
+  const { env } = context;
+  const ttl = Number.isFinite(hours) && hours > 0 ? Math.min(hours, 24 * 365) : 0;
+  const createdAt = new Date().toISOString();
+  const expiresAt = ttl ? new Date(Date.now() + ttl * 3_600_000).toISOString() : null;
+
+  for (let attempt = 0; attempt < (slug ? 1 : 4); attempt += 1) {
+    const code = slug || randomCode();
+    try {
+      await env.DB.prepare(
+        'INSERT INTO links (code, url, site_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'
+      ).bind(code, target, siteFor(host).id, expiresAt, createdAt).run();
+      try {
+        await env.CACHE.put(`l:${code}`, JSON.stringify({ u: target, e: expiresAt, a: 1 }), {
+          expirationTtl: ttl ? Math.min(ttl * 3600, 2_592_000) : 604_800
+        });
+      } catch { /* cache is best-effort */ }
+      return {
+        ok: true,
+        data: {
+          shortUrl: `https://${host}/${code}`,
+          code,
+          expiresAt,
+          network: NETWORK.map((entry) => entry.host)
+        }
+      };
+    } catch (err) {
+      if (slug) return { ok: false, error: 'slug_taken', status: 409 };
+    }
+  }
+  return { ok: false, error: 'could_not_create', status: 500 };
+}
+
 async function shorten(context, requestUrl) {
-  const { request, env } = context;
+  const { request } = context;
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  if (rateLimited(ip)) return json({ error: 'rate_limited' }, 429);
+  if (rateLimited(ip, 'shorten', 30, 60_000)) return json({ error: 'rate_limited' }, 429);
 
   let body;
   try {
@@ -108,32 +156,49 @@ async function shorten(context, requestUrl) {
   if (slug && RESERVED.has(slug.toLowerCase())) return json({ error: 'slug_reserved' }, 409);
 
   const hours = body.expiresIn === undefined ? 24 : Number(body.expiresIn);
-  const ttl = Number.isFinite(hours) && hours > 0 ? Math.min(hours, 24 * 365) : 0;
-  const createdAt = new Date().toISOString();
-  const expiresAt = ttl ? new Date(Date.now() + ttl * 3_600_000).toISOString() : null;
+  const result = await createLinkRecord(context, target, slug, hours, requestUrl.hostname);
+  if (!result.ok) return json({ error: result.error }, result.status);
+  return json(result.data, 201);
+}
 
-  for (let attempt = 0; attempt < (slug ? 1 : 4); attempt += 1) {
-    const code = slug || randomCode();
-    try {
-      await env.DB.prepare(
-        'INSERT INTO links (code, url, site_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?)'
-      ).bind(code, target, siteFor(requestUrl.hostname).id, expiresAt, createdAt).run();
-      try {
-        await env.CACHE.put(`l:${code}`, JSON.stringify({ u: target, e: expiresAt, a: 1 }), {
-          expirationTtl: ttl ? Math.min(ttl * 3600, 2_592_000) : 604_800
-        });
-      } catch { /* cache is best-effort */ }
-      return json({
-        shortUrl: `https://${requestUrl.hostname}/${code}`,
-        code,
-        expiresAt,
-        network: NETWORK.map((entry) => entry.host)
-      }, 201);
-    } catch (err) {
-      if (slug) return json({ error: 'slug_taken' }, 409);
+/**
+ * Bulk shortening for the n6 tool. One request creates up to 100 links,
+ * avoiding the per-request burst limit while keeping ownership and cache writes identical.
+ */
+async function bulkShorten(context, requestUrl) {
+  const { request } = context;
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  if (rateLimited(ip, 'bulk', 3, 600_000)) return json({ error: 'rate_limited' }, 429);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'invalid_json' }, 400);
+  }
+  const rawUrls = Array.isArray(body.urls) ? body.urls.slice(0, 100) : [];
+  if (!rawUrls.length) return json({ error: 'invalid_urls' }, 400);
+
+  const hours = body.expiresIn === undefined ? 0 : Number(body.expiresIn);
+  const results = [];
+  const seen = new Set();
+  for (let index = 0; index < rawUrls.length; index += 1) {
+    const original = String(rawUrls[index] || '');
+    const target = validateUrl(original);
+    if (!target || seen.has(target)) {
+      results.push({ index, url: original, ok: false, error: target ? 'duplicate' : 'invalid_url' });
+      continue;
+    }
+    seen.add(target);
+    const created = await createLinkRecord(context, target, '', hours, requestUrl.hostname);
+    if (created.ok) {
+      results.push({ index, url: original, ok: true, shortUrl: created.data.shortUrl, code: created.data.code, expiresAt: created.data.expiresAt });
+    } else {
+      results.push({ index, url: original, ok: false, error: created.error });
     }
   }
-  return json({ error: 'could_not_create' }, 500);
+  const createdCount = results.filter((row) => row.ok).length;
+  return json({ results, created: createdCount, failed: results.length - createdCount }, 200);
 }
 
 async function recordClick(env, request, url, code) {
@@ -189,7 +254,7 @@ async function resolve(context, code, url) {
 async function contact(context, requestUrl) {
   const { request, env } = context;
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  if (rateLimited(ip)) return json({ error: 'rate_limited' }, 429);
+  if (rateLimited(ip, 'contact', 10, 60_000)) return json({ error: 'rate_limited' }, 429);
 
   let body;
   try {
@@ -262,6 +327,202 @@ async function billingWebhook(context) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Link-in-bio pages (9.com.ly tool)                                   */
+/* ------------------------------------------------------------------ */
+
+function makeHandle(value) {
+  const raw = String(value || '').toLowerCase().trim();
+  let slug = raw
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 32);
+  if (!HANDLE_RE.test(slug)) slug = `page-${randomCode(6).toLowerCase()}`;
+  return slug;
+}
+
+function parseBioPayload(body) {
+  const title = String(body.title || '').trim().slice(0, 60);
+  const bio = String(body.bio || '').trim().slice(0, 160);
+  const theme = BIO_THEMES.has(body.theme) ? body.theme : 'midnight';
+  const requested = String(body.handle || '').trim();
+  const handle = makeHandle(requested || title);
+  const rawAvatar = String(body.avatar || '').trim().slice(0, 3);
+  const avatar = rawAvatar || (title.replace(/\s/g, '').charAt(0) || '✦');
+  const rawLinks = Array.isArray(body.links) ? body.links.slice(0, 12) : [];
+  const links = [];
+  const seen = new Set();
+  for (const item of rawLinks) {
+    const url = validateUrl(String((item && item.url) || ''), true);
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    links.push({
+      title: String((item && item.title) || '').trim().slice(0, 60) || new URL(url).hostname.replace(/^www\./, ''),
+      url
+    });
+  }
+  if (!title) return { error: 'title_required' };
+  if (!links.length) return { error: 'links_required' };
+  return { title, handle, bio, theme, avatar, links };
+}
+
+async function loadBio(context, slug) {
+  const { env } = context;
+  let record = null;
+  try {
+    record = await env.CACHE.get(`bio:${slug}`, 'json');
+  } catch { /* cache is best-effort */ }
+  if (!record) {
+    try {
+      const row = await env.DB.prepare(
+        'SELECT slug, title, handle, bio, theme, avatar, links_json FROM bio_pages WHERE slug = ?'
+      ).bind(slug).first();
+      if (row) {
+        let links = [];
+        try { links = JSON.parse(row.links_json || '[]'); } catch { links = []; }
+        record = {
+          slug: row.slug,
+          title: row.title,
+          handle: row.handle,
+          bio: row.bio || '',
+          theme: row.theme || 'midnight',
+          avatar: row.avatar || '✦',
+          links
+        };
+        try {
+          await env.CACHE.put(`bio:${slug}`, JSON.stringify(record), { expirationTtl: 86_400 });
+        } catch { /* ignore */ }
+      }
+    } catch { /* fall through to not-found */ }
+  }
+  return record;
+}
+
+async function handleBioCreate(context, requestUrl) {
+  const { request, env } = context;
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  if (rateLimited(ip, 'bio', 6, 600_000)) return json({ error: 'rate_limited' }, 429);
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: 'invalid_json' }, 400);
+  }
+  const page = parseBioPayload(body || {});
+  if (page.error) return json({ error: page.error }, 400);
+
+  const slug = page.handle;
+  const createdAt = new Date().toISOString();
+  const record = {
+    slug,
+    title: page.title,
+    handle: page.handle,
+    bio: page.bio,
+    theme: page.theme,
+    avatar: page.avatar,
+    links: page.links
+  };
+  try {
+    await env.DB.prepare(
+      'INSERT INTO bio_pages (slug, site_id, title, handle, bio, theme, avatar, links_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(slug, SITE.id, record.title, record.handle, record.bio, record.theme, record.avatar, JSON.stringify(record.links), createdAt).run();
+  } catch (err) {
+    if (/UNIQUE/i.test(String(err && err.message))) {
+      return json({ error: 'handle_taken', suggestion: makeHandle(`${record.handle}-${randomCode(4)}`) }, 409);
+    }
+    return json({ error: 'storage_failed' }, 500);
+  }
+  try {
+    await env.CACHE.put(`bio:${slug}`, JSON.stringify(record), { expirationTtl: 86_400 });
+  } catch { /* ignore */ }
+
+  const url = `https://${requestUrl.hostname}/b/${slug}/`;
+  return json({ ok: true, slug, url, shortUrl: url, page: record }, 201);
+}
+
+const BIO_PALETTES = {
+  midnight: { bg: '#09090b', card: '#18181b', fg: '#fafafa', muted: '#a1a1aa', accent: '#a78bfa', border: '#3f3f46' },
+  sunrise: { bg: '#1c1917', card: '#292524', fg: '#fffbeb', muted: '#d6d3d1', accent: '#fb923c', border: '#57534e' },
+  mint: { bg: '#022c22', card: '#064e3b', fg: '#ecfdf5', muted: '#a7f3d0', accent: '#34d399', border: '#047857' },
+  rose: { bg: '#1c0d18', card: '#3f1232', fg: '#fff1f2', muted: '#fda4af', accent: '#fb7185', border: '#9f1239' }
+};
+
+function renderBioDocument(record, host) {
+  const p = BIO_PALETTES[record.theme] || BIO_PALETTES.midnight;
+  const rtl = /[\u0600-\u06FF]/.test(`${record.title} ${record.bio}`);
+  const links = (record.links || []).map((link, index) => `
+      <a class="bio-link" href="${esc(link.url)}" target="_blank" rel="noopener noreferrer">
+        <span class="bio-link-num">${String(index + 1).padStart(2, '0')}</span>
+        <span class="bio-link-title">${esc(link.title)}</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7M8 7h9v9"/></svg>
+      </a>`).join('');
+  return `<!DOCTYPE html>
+<html lang="${rtl ? 'ar' : 'en'}" dir="${rtl ? 'rtl' : 'ltr'}" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(record.title)} — ${esc(host)}</title>
+<meta name="description" content="${esc(record.bio || record.title)}">
+<meta name="robots" content="index, follow">
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:${p.bg};color:${p.fg};font-family:Inter,Rubik,system-ui,sans-serif;display:grid;place-items:center;padding:38px 18px 24px;position:relative;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(${p.border}33 1px,transparent 1px),linear-gradient(90deg,${p.border}33 1px,transparent 1px);background-size:42px 42px;mask-image:radial-gradient(ellipse 70% 50% at 50% 0%,#000,transparent 75%)}
+  main{width:min(440px,100%);position:relative}
+  .card{border:1px solid ${p.border};background:${p.card};border-radius:22px;padding:32px 26px 24px;box-shadow:0 30px 90px -50px #000}
+  .top{text-align:center}
+  .avatar{width:66px;height:66px;margin:0 auto 16px;border-radius:20px;display:grid;place-items:center;background:${p.accent};color:${p.bg};font-size:24px;font-weight:700;line-height:1}
+  h1{font-size:1.55rem;margin:0 0 4px;letter-spacing:-.02em}
+  .handle{font:12px/1.5 ui-monospace,monospace;color:${p.accent};margin:0 0 12px}
+  .bio{color:${p.muted};font-size:14px;line-height:1.75;margin:0 0 26px;white-space:pre-line}
+  .links{display:grid;gap:10px}
+  .bio-link{display:flex;align-items:center;gap:12px;padding:14px 15px;border:1px solid ${p.border};border-radius:12px;color:${p.fg};text-decoration:none;background:${p.bg}66;transition:transform .18s ease,border-color .18s ease,background .18s ease}
+  .bio-link:hover{transform:translateY(-2px);border-color:${p.accent};background:${p.bg}}
+  .bio-link-num{font:11px ui-monospace,monospace;color:${p.muted}}
+  .bio-link-title{flex:1;font-weight:500;font-size:14px}
+  .foot{text-align:center;margin-top:22px;color:${p.muted};font:11px ui-monospace,monospace}
+  .foot a{color:${p.accent};text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <div class="top">
+      <div class="avatar">${esc(record.avatar)}</div>
+      <h1>${esc(record.title)}</h1>
+      <p class="handle">@${esc(record.handle)}</p>
+      <p class="bio">${esc(record.bio || (rtl ? 'كل روابطي في مكان واحد.' : 'All my links in one place.'))}</p>
+    </div>
+    <div class="links">${links}</div>
+  </div>
+  <div class="foot">${rtl ? 'صفحة روابط عبر' : 'A link page on'} <a href="/">${esc(host)}</a> · comm.ly network</div>
+</main>
+</body></html>`;
+}
+
+async function handleBioRead(context, slug, asJson) {
+  const record = await loadBio(context, slug);
+  if (!record) {
+    if (asJson) return json({ error: 'not_found' }, 404);
+    return new Response('<!doctype html><meta charset="utf-8"><title>404</title><body style="background:#09090b;color:#fafafa;font-family:system-ui;display:grid;place-items:center;min-height:100vh"><div><h1>404</h1><p>This page does not exist.</p><a style="color:#a78bfa" href="/">Home</a></div></body>', {
+      status: 404,
+      headers: { 'Content-Type': 'text/html; charset=utf-8', ...SECURITY_HEADERS }
+    });
+  }
+  try {
+    context.waitUntil(context.env.DB.prepare('UPDATE bio_pages SET views = views + 1 WHERE slug = ?').bind(slug).run());
+  } catch { /* analytics must never break a bio page */ }
+  if (asJson) return json({ ok: true, page: record });
+  const host = new URL(context.request.url).hostname;
+  return new Response(renderBioDocument(record, host), {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60', ...SECURITY_HEADERS }
+  });
+}
+
 export async function handle(context) {
   const { request, next } = context;
   const url = new URL(request.url);
@@ -269,8 +530,14 @@ export async function handle(context) {
 
   if (pathname === '/api/health') return json({ ok: true, site: SITE.id, host: url.hostname });
   if (pathname === '/api/shorten' && request.method === 'POST') return shorten(context, url);
+  if (pathname === '/api/shorten/bulk' && request.method === 'POST') return bulkShorten(context, url);
   if (pathname === '/api/contact' && request.method === 'POST') return contact(context, url);
   if (pathname === '/api/lookup') return handleLookup(context);
+  if (pathname === '/api/bio' && request.method === 'POST') return handleBioCreate(context, url);
+  const bioApiMatch = BIO_API_RE.exec(pathname);
+  if (bioApiMatch && request.method === 'GET') return handleBioRead(context, bioApiMatch[1], true);
+  const bioMatch = BIO_PATH_RE.exec(pathname);
+  if (bioMatch && (request.method === 'GET' || request.method === 'HEAD')) return handleBioRead(context, bioMatch[1], false);
   if (pathname === '/api/stats') return handleStatsRoute(context);
   if (pathname === '/api/billing/webhook' && request.method === 'POST') return billingWebhook(context);
 

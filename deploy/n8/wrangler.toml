@@ -1,0 +1,14 @@
+# comm.ly network — generated Pages deploy config for n8
+name = "comly-n8"
+pages_build_output_dir = "../../dist/n8"
+compatibility_date = "2026-10-01"
+
+# Shared resources used by every network domain.
+[[d1_databases]]
+binding = "DB"
+database_name = "comly"
+database_id = "417f6acd-60fa-4f88-a85f-f85a05fe0335"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "e86ee4ad80904265a273d6a4d083bef3"

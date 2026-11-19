@@ -11,6 +11,8 @@
     "preview:prototype": "node prototype/server.mjs",
     "verify": "node prototype/verify.mjs",
     "test": "node prototype/verify.mjs && node tools/dom-test.mjs",
+    "test:qr": "node tools/qr-test.mjs",
+    "test:tools": "node tools/check-utm-bulk.mjs && node tools/check-api-lookup.mjs && node tools/check-bio.mjs && node tools/check-tool-contract.mjs",
     "test:dom": "node tools/dom-test.mjs",
     "shots": "node tools/screenshots.mjs"
   },

@@ -376,17 +376,34 @@ node tools/verify-build.mjs    # 40 اختباراً — يتطلب: node script
 
 ---
 
-## 16) الحالة النهائية باختصار
+## 16) الحالة النهائية باختصار (تحديث 2026-11-19)
 
-- ✅ الموقع حي ويعمل، والاختصار والتحويل والحسابات مفحوصة E2E على الإنتاج.
-- ✅ قاعدة D1 وKV جاهزتان ومربوطتان.
-- ✅ التصميم الجديد (shadcn داكن/فاتح + Tabler) منشور.
-- 🟡 المحركات الستة لم تُنشر بعد (الكود جاهز في البناء).
-- 🟡 نطاقات مخصصة لم تُربط بعد (فقط `*.pages.dev`).
-- 🔴 الأدوات التفاعلية، لوحة الإدارة، البريد، الدفع، المحتوى — قيد التنفيذ لاحقاً.
+- ✅ الموقع الرئيسي حي: https://comm-ly.pages.dev (و`/ar/`).
+- ✅ المحركات الستة منشورة ومربوطة بنفس `DB` و`CACHE`:
+  - https://comly-n3.pages.dev — مولّد QR
+  - https://comly-n4.pages.dev — منشئ UTM
+  - https://comly-n6.pages.dev — اختصار جماعي
+  - https://comly-n7.pages.dev — ملعب API
+  - https://comly-n8.pages.dev — فاحص الروابط
+  - https://comly-n9.pages.dev — منشئ صفحة بايو
+- ✅ الأدوات التفاعلية الستة مكتملة وتعمل محلياً وعلى الإنتاج (بدون مكتبات خارجية).
+- ✅ تصميم shadcn/Magic UI موحّد على كل المواقع، مع ثيمات داكن/فاتح/نظام.
+- ✅ جداول D1 محدّثة (10 جداول، منها `bio_pages`) على الإنتاج.
+- ✅ اختبارات محلية وحيّة ناجحة: `engine-test`, `qr-test`, `check-utm-bulk`, `check-api-lookup`, `check-bio`, `check-tool-contract`, `verify-build`, `verify-live`.
+- 🟡 النطاقات المخصصة (`3.com.ly` … `9.com.ly`) لم تُر بعد؛ الروابط الحية على `*.pages.dev`.
+- 🔴 لوحة `/admin`، البريد، الدفع، والمحتوى التحريري لا تزال خطة لاحقة.
 
-**أفضل نقطة بداية للوكيل الجديد:** نشر المحركات الستة ثم بناء أول أداة تفاعلية (مولّد QR على 3.com.ly) ثم لوحة الإدارة.
+### النشر بعد أي تعديل
+
+```powershell
+cd "C:\Link shortening platform"
+node build/build.mjs
+node scripts/deploy.mjs commly n3 n4 n6 n7 n8 n9
+node tools/verify-live.mjs
+```
+
+`scripts/deploy.mjs` يكتب مؤقتاً `pages_build_output_dir` + Bindings في `wrangler.toml` ثم يستعيد الملف الأصلي، وينشر من جذر المشروع حتى تُضمّن Functions. لا تستخدم `--config` مع Pages (غير مدعوم)، ولا تحذف `--force` عند إنشاء مشروع Pages جديد عبر Wrangler.
 
 ---
 
-*آخر تحديث لهذه الوثيقة: بعد نجاح الاختبار الحي على Cloudflare وإصلاح PBKDF2.*
+*آخر تحديث لهذه الوثيقة: بعد اكتمال الأدوات الستة ونشر كل المواقع على Cloudflare Pages ونجاح الفحص الحي.*

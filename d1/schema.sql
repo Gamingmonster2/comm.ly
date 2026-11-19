@@ -99,3 +99,22 @@ CREATE TABLE IF NOT EXISTS api_keys (
   last_used_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- ------------------------------------------------------------------
+-- Link-in-bio pages (9.com.ly tool)
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS bio_pages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  site_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  handle TEXT NOT NULL,
+  bio TEXT,
+  theme TEXT NOT NULL DEFAULT 'midnight',
+  avatar TEXT,
+  links_json TEXT NOT NULL DEFAULT '[]',
+  views INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_bio_slug ON bio_pages (slug);
+CREATE INDEX IF NOT EXISTS idx_bio_created ON bio_pages (created_at);

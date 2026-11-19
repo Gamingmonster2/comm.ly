@@ -281,6 +281,395 @@ function shortenCard({ site, lang }) {
   </div>`;
 }
 
+/* Interactive QR tool — rendered only for n3 (3.com.ly). */
+function qrTool({ site, lang }) {
+  const t = (ar, en) => pick(lang, ar, en);
+  return `<div class="qr-tool" id="qrTool">
+    <div class="qr-tool-form">
+      <label class="qr-label" for="qrInput">${t('الرابط أو النص المطلوب ترميزه', 'Link or text to encode')}</label>
+      <label class="field-url" for="qrInput">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        <input type="text" id="qrInput" inputmode="url" autocomplete="off" spellcheck="false" placeholder="${t('الصق رابطاً أو نصاً…', 'Paste a link or text…')}" />
+      </label>
+      <div class="qr-options">
+        <label class="opt-field qr-check" for="qrShortenFirst">
+          <input type="checkbox" id="qrShortenFirst" checked />
+          <span>${t('اختصر الرابط أولاً', 'Shorten the link first')}</span>
+        </label>
+        <label class="opt-field" for="qrSize">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+          <select id="qrSize">
+            <option value="256">256 px</option>
+            <option value="512" selected>512 px</option>
+            <option value="1024">1024 px</option>
+          </select>
+        </label>
+        <label class="opt-field" for="qrLevel">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>
+          <select id="qrLevel">
+            <option value="L">L — ${t('منخفض', 'low')}</option>
+            <option value="M" selected>M — ${t('متوسط', 'medium')}</option>
+            <option value="Q">Q — ${t('مرتفع', 'high')}</option>
+            <option value="H">H — ${t('أقصى', 'highest')}</option>
+          </select>
+        </label>
+        <label class="opt-field qr-color" for="qrFg">
+          <span>${t('اللون', 'Colour')}</span>
+          <input type="color" id="qrFg" value="#09090b" />
+          <input type="color" id="qrBg" value="#ffffff" aria-label="${t('لون الخلفية', 'Background colour')}" />
+        </label>
+      </div>
+      <button class="btn btn-primary" type="button" id="qrGenerate">
+        <span class="spinner" aria-hidden="true"></span>
+        <span class="btn-label">${t('أنشئ رمز QR', 'Generate QR code')}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="flip-rtl" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+      </button>
+      <p class="error-msg" id="qrError" role="alert"></p>
+      <p class="qr-hint">${t('يعمل محلياً في متصفحك — لا تُرسل بياناتك إلى أي خدمة خارجية.', 'Runs locally in your browser — your data is never sent to an external service.')}</p>
+    </div>
+    <div class="qr-tool-preview">
+      <div class="qr-preview-box" id="qrPreview" aria-live="polite">
+        <svg class="qr-placeholder-icon" width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 19h2v2h-2zM14 19h2M19 14v2"/></svg>
+        <span>${t('سيظهر رمز QR هنا', 'Your QR code will appear here')}</span>
+      </div>
+      <div class="qr-preview-actions is-hidden" id="qrActions">
+        <button class="btn btn-primary btn-sm" type="button" id="qrDownloadPng">${t('تنزيل PNG', 'Download PNG')}</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="qrDownloadSvg">${t('تنزيل SVG', 'Download SVG')}</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="qrCopy">${t('نسخ الصورة', 'Copy image')}</button>
+      </div>
+      <p class="qr-result-url" id="qrResultUrl"></p>
+    </div>
+  </div>`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared interactive-tool building blocks                             */
+/* ------------------------------------------------------------------ */
+function arrowIcon() {
+  return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="flip-rtl" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>`;
+}
+
+function loadingButton(id, label, extraClass = '') {
+  return `<button class="btn btn-primary ${extraClass}" type="button" id="${id}">
+    <span class="spinner" aria-hidden="true"></span>
+    <span class="btn-label">${esc(label)}</span>
+    ${arrowIcon()}
+  </button>`;
+}
+
+function toolIntro(title, subtitle, badge, eyebrow) {
+  return `<div class="section-head reveal">
+    <span class="eyebrow">${esc(eyebrow)}</span>
+    <h2>${esc(title)}</h2>
+    <p class="lead">${esc(subtitle)}</p>
+  </div>`;
+}
+
+function copyButton(id, label) {
+  return `<button class="btn btn-ghost btn-sm" type="button" id="${id}">${esc(label)}</button>`;
+}
+
+/* UTM campaign builder — 4.com.ly */
+function utmTool({ site, lang }) {
+  const t = (ar, en) => pick(lang, ar, en);
+  return `${toolIntro(
+    t('ابنِ رابط حملتك الآن', 'Build your campaign link'),
+    t('وسوم UTM نظيفة + رابط قصير يعمل على كل نطاقات الشبكة.', 'Clean UTM tagging plus a short link that resolves on every network domain.'),
+    t('أداة تفاعلية', 'Interactive tool'),
+    t('منشئ UTM', 'UTM builder')
+  )}
+  <div class="tool-shell reveal" id="utmTool">
+    <div class="tool-toolbar">
+      <div>
+        <div class="tool-toolbar-title">${t('منشئ روابط الحملات', 'Campaign URL builder')}</div>
+        <p class="tool-panel-subtitle">${t('اختر قالباً أو املأ الحقول يدوياً — النتيجة جاهزة للتحليلات.', 'Pick a preset or fill the fields manually — analytics-ready output.')}</p>
+      </div>
+      <span class="tool-toolbar-badge mono">UTM · 5 params</span>
+    </div>
+    <div class="tool-grid">
+      <div class="tool-panel">
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('إعداد الحملة', 'Campaign setup')}</span><span class="status-dot"></span></div>
+        <div class="tool-form">
+          <label class="tool-field">
+            <span class="tool-field-label">${t('الرابط الأساسي', 'Destination URL')}</span>
+            <label class="field-url" for="utmUrl">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <input id="utmUrl" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/landing" />
+            </label>
+          </label>
+          <div class="utm-presets" aria-label="${t('قوالب سريعة', 'Quick presets')}">
+            ${[['google', 'Google'], ['whatsapp', 'WhatsApp'], ['facebook', 'Facebook'], ['instagram', 'Instagram'], ['x', 'X / Twitter'], ['email', 'Email'], ['tiktok', 'TikTok']]
+              .map(([value, label]) => `<button type="button" class="utm-preset" data-utm-preset="${value}">${label}</button>`).join('')}
+          </div>
+          <div class="tool-form-grid">
+            <label class="tool-field"><span class="tool-field-label">utm_source</span><input id="utmSource" type="text" maxlength="60" placeholder="google" /></label>
+            <label class="tool-field"><span class="tool-field-label">utm_medium</span>
+              <select id="utmMedium">
+                <option value="cpc">cpc</option><option value="social" selected>social</option><option value="email">email</option>
+                <option value="organic">organic</option><option value="referral">referral</option><option value="affiliate">affiliate</option>
+                <option value="display">display</option><option value="push">push</option>
+              </select>
+            </label>
+            <label class="tool-field"><span class="tool-field-label">utm_campaign</span><input id="utmCampaign" type="text" maxlength="80" placeholder="spring_launch" /></label>
+            <label class="tool-field"><span class="tool-field-label">utm_term ${t('(اختياري)', '(optional)')}</span><input id="utmTerm" type="text" maxlength="80" placeholder="running+shoes" /></label>
+            <label class="tool-field"><span class="tool-field-label">utm_content ${t('(اختياري)', '(optional)')}</span><input id="utmContent" type="text" maxlength="80" placeholder="banner_a" /></label>
+          </div>
+          <label class="opt-field qr-check" for="utmShorten"><input type="checkbox" id="utmShorten" checked /><span>${t('اختصر الرابط الناتج أيضاً', 'Also shorten the final link')}</span></label>
+          ${loadingButton('utmGenerate', t('أنشئ رابط الحملة', 'Build campaign link'))}
+          <p class="error-msg" id="utmError" role="alert"></p>
+        </div>
+      </div>
+      <div class="tool-panel">
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('النتيجة', 'Output')}</span><span class="tool-toolbar-badge mono">LIVE</span></div>
+        <div id="utmResult" class="is-hidden">
+          <div class="result-head">
+            <span class="result-title">${t('الرابط الكامل', 'Tagged URL')}</span>
+            <span class="result-subtitle">${t('انسخه إلى Google Analytics أو أي أداة تحليلات.', 'Copy it into Google Analytics or any analytics tool.')}</span>
+          </div>
+          <div class="copy-row"><a class="utm-result-url mono" id="utmFullUrl" href="#" target="_blank" rel="noopener">—</a>${copyButton('utmCopyFull', t('نسخ', 'Copy'))}</div>
+          <div class="tool-separator"></div>
+          <div class="result-head">
+            <span class="result-title">${t('الرابط المختصر', 'Short link')}</span>
+            <span class="result-subtitle">${t('يعمل على كل نطاقات الشبكة.', 'Resolves on every network domain.')}</span>
+          </div>
+          <div class="copy-row"><a class="result-link mono" id="utmShortUrl" href="#" target="_blank" rel="noopener">—</a>${copyButton('utmCopyShort', t('نسخ', 'Copy'))}</div>
+          <div class="kv-grid">
+            <div class="kv-item"><span class="kv-label">${t('الكود', 'Code')}</span><span class="kv-value mono" id="utmCode">—</span></div>
+            <div class="kv-item"><span class="kv-label">${t('الحالة', 'Status')}</span><span class="kv-value" id="utmMeta">—</span></div>
+          </div>
+          <a class="btn btn-ghost btn-sm" id="utmOpen" href="#" target="_blank" rel="noopener">${t('فتح الرابط', 'Open link')} ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* Bulk shortener — 6.com.ly */
+function bulkTool({ site, lang }) {
+  const t = (ar, en) => pick(lang, ar, en);
+  return `${toolIntro(
+    t('اختصر قائمة روابط دفعة واحدة', 'Shorten a list of links at once'),
+    t('الصق حتى 100 رابط أو CSV — واحصل على جدول نتائج قابل للتصدير.', 'Paste up to 100 links or CSV — get an exportable results table.'),
+    t('أداة تفاعلية', 'Interactive tool'),
+    t('اختصار جماعي', 'Bulk shortener')
+  )}
+  <div class="tool-shell reveal" id="bulkTool">
+    <div class="tool-toolbar">
+      <div><div class="tool-toolbar-title">${t('معالجة الدفعات', 'Batch processing')}</div><p class="tool-panel-subtitle">${t('سطر لكل رابط، أو عمود بعنوان url/link في CSV.', 'One URL per line, or a url/link column in CSV.')}</p></div>
+      <span class="tool-toolbar-badge mono">MAX 100</span>
+    </div>
+    <div class="tool-grid">
+      <div class="tool-panel">
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('أدخل الروابط', 'Input links')}</span><span class="status-dot"></span></div>
+        <div class="tool-form">
+          <label class="tool-field">
+            <span class="tool-field-label">${t('قائمة الروابط', 'Link list')}</span>
+            <textarea id="bulkInput" class="bulk-textarea" rows="10" spellcheck="false" placeholder="https://example.com/a&#10;https://example.com/b&#10;https://example.com/c"></textarea>
+            <span class="tool-field-hint">${t('يتم تجاهل الصفوف المكررة والروابط غير الصالحة مع عرض سبب الاستبعاد.', 'Duplicates and invalid URLs are skipped with a visible reason.')}</span>
+          </label>
+          <label class="tool-field"><span class="tool-field-label">${t('انتهاء الصلاحية', 'Expiry')}</span>
+            <select id="bulkExpiry"><option value="24">24h</option><option value="168">7d</option><option value="720">30d</option><option value="0" selected>${t('بلا انتهاء', 'Never')}</option></select>
+          </label>
+          ${loadingButton('bulkShorten', t('اختصر الدفعة', 'Shorten batch'))}
+          <p class="error-msg" id="bulkError" role="alert"></p>
+        </div>
+      </div>
+      <div class="tool-panel">
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('تقدّم المعالجة', 'Progress')}</span><span class="tool-toolbar-badge mono">BATCH</span></div>
+        <div class="bulk-progress"><div class="bulk-progress-bar"><i id="bulkProgressBar"></i></div><span class="mono" id="bulkProgress">${t('جاهز', 'Ready')}</span></div>
+        <div class="bulk-summary">
+          <div class="bulk-summary-item"><span class="kv-label">${t('الإجمالي', 'Total')}</span><strong id="bulkTotal">0</strong></div>
+          <div class="bulk-summary-item"><span class="kv-label">${t('تم', 'Done')}</span><strong id="bulkDone">0</strong></div>
+          <div class="bulk-summary-item"><span class="kv-label">${t('فشل', 'Failed')}</span><strong id="bulkFailed">0</strong></div>
+        </div>
+        <div class="tool-actions">
+          ${copyButton('bulkCopyAll', t('نسخ كل الروابط', 'Copy all links'))}
+          ${copyButton('bulkDownloadCsv', 'CSV ↓')}
+          ${copyButton('bulkReset', t('إعادة تعيين', 'Reset'))}
+        </div>
+        <div class="result-card is-hidden" id="bulkResults">
+          <div class="bulk-rows-wrap"><table class="bulk-rows">
+            <thead><tr><th>#</th><th>${t('الرابط الأصلي', 'Original')}</th><th>${t('المختصر', 'Short')}</th><th>${t('الحالة', 'Status')}</th></tr></thead>
+            <tbody id="bulkRows"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* API playground — 7.com.ly */
+function apiTool({ site, lang }) {
+  const t = (ar, en) => pick(lang, ar, en);
+  return `${toolIntro(
+    t('APIs حقيقية — جرّب الآن', 'Real APIs — try one now'),
+    t('أرسل طلباً فعلياً إلى نفس المحرك وشاهد الاستجابة والكود الجاهز.', 'Fire a real request against the same engine and inspect the response and ready-to-copy code.'),
+    t('أداة تفاعلية', 'Interactive tool'),
+    t('ملعب API', 'API playground')
+  )}
+  <div class="tool-shell reveal" id="apiTool">
+    <div class="tool-toolbar">
+      <div><div class="tool-toolbar-title">${t('وحدة تحكم الواجهة', 'API console')}</div><p class="tool-panel-subtitle">${t('لا مفاتيح مطلوبة للاختبار على النطاق التجريبي.', 'No keys required for testing on the demo domain.')}</p></div>
+      <span class="tool-toolbar-badge mono">REST / JSON</span>
+    </div>
+    <div class="tool-grid api-layout">
+      <div class="tool-panel">
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('الطلب', 'Request')}</span><span class="api-status" id="apiStatus">—</span></div>
+        <div class="tool-form">
+          <div class="tool-form-grid">
+            <label class="tool-field"><span class="tool-field-label">${t('نقطة النهاية', 'Endpoint')}</span>
+              <select id="apiEndpoint">
+                <option value="/api/health">GET /api/health</option>
+                <option value="/api/shorten" selected>POST /api/shorten</option>
+                <option value="/api/lookup">GET /api/lookup</option>
+                <option value="/api/stats">GET /api/stats</option>
+              </select>
+            </label>
+            <label class="tool-field"><span class="tool-field-label">${t('الطريقة', 'Method')}</span><span class="api-method mono" id="apiMethod">POST</span></label>
+          </div>
+          <label class="tool-field" id="apiQueryField"><span class="tool-field-label">?url=</span><input id="apiQuery" type="text" inputmode="url" placeholder="https://3.com.ly/abc123" /></label>
+          <label class="tool-field" id="apiBodyField"><span class="tool-field-label">JSON body</span><textarea id="apiBody" rows="7" spellcheck="false">{
+  "url": "https://example.com/hello",
+  "expiresIn": 24
+}</textarea></label>
+          ${loadingButton('apiRun', t('أرسل الطلب', 'Send request'))}
+          <p class="error-msg" id="apiError" role="alert"></p>
+        </div>
+      </div>
+      <div class="tool-panel">
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('الاستجابة', 'Response')}</span><span class="api-meta mono" id="apiTime">— ms</span></div>
+        <div class="code-block"><div class="code-block-head"><span>JSON</span>${copyButton('apiCopyResponse', t('نسخ', 'Copy'))}</div><pre id="apiResponse">—</pre></div>
+        <div class="tool-separator"></div>
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('الكود الجاهز', 'Code snippet')}</span>
+          <select id="apiLang" class="code-lang"><option value="curl">cURL</option><option value="javascript">JavaScript</option><option value="python">Python</option></select>
+        </div>
+        <div class="code-block"><div class="code-block-head"><span id="apiLangLabel">cURL</span>${copyButton('apiCopySnippet', t('نسخ', 'Copy'))}</div><pre id="apiSnippet">—</pre></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* Link checker — 8.com.ly */
+function lookupTool({ site, lang }) {
+  const t = (ar, en) => pick(lang, ar, en);
+  const signal = (id, label) => `<div class="signal-chip signal-ok" id="${id}"><span class="status-dot"></span><span>${esc(label)}</span></div>`;
+  return `${toolIntro(
+    t('افحص أي رابط قبل أن تفتحه', 'Inspect any link before you open it'),
+    t('توسيع آمن، إشارات HTTPS، وحالة الرابط — دون تحويل فعلي أو تتبع.', 'Safe expansion, HTTPS signals and link status — with no redirect or tracking.'),
+    t('أداة تفاعلية', 'Interactive tool'),
+    t('فاحص الروابط', 'Link checker')
+  )}
+  <div class="tool-shell reveal" id="lookupTool">
+    <div class="lookup-hero">
+      <div class="tool-panel-title">${t('الصق رابطاً للفحص', 'Paste a link to inspect')}</div>
+      <div class="copy-row">
+        <label class="field-url" for="lookupInput"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/></svg><input id="lookupInput" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://bit.ly/abc123" /></label>
+        ${loadingButton('lookupButton', t('افحص الرابط', 'Check link'))}
+      </div>
+      <p class="error-msg" id="lookupError" role="alert"></p>
+    </div>
+    <div class="result-card is-hidden" id="lookupResult">
+      <div class="result-head lookup-result-head">
+        <span class="result-title">${t('الوجهة', 'Destination')}</span>
+        <span class="api-status" id="lookupStatus">—</span>
+      </div>
+      <div class="copy-row"><a class="utm-result-url mono" id="lookupDestination" href="#" target="_blank" rel="noopener">—</a>${copyButton('lookupCopy', t('نسخ', 'Copy'))}</div>
+      <div class="kv-grid">
+        <div class="kv-item"><span class="kv-label">${t('النطاق', 'Host')}</span><span class="kv-value mono" id="lookupHost">—</span></div>
+        <div class="kv-item"><span class="kv-label">${t('الكود', 'Code')}</span><span class="kv-value mono" id="lookupCode">—</span></div>
+        <div class="kv-item"><span class="kv-label">${t('الحالة', 'Status')}</span><span class="kv-value" id="lookupStatusText">—</span></div>
+        <div class="kv-item"><span class="kv-label">${t('الانتهاء', 'Expiry')}</span><span class="kv-value" id="lookupExpiry">—</span></div>
+        <div class="kv-item"><span class="kv-label">${t('المصدر', 'Source')}</span><span class="kv-value" id="lookupSource">—</span></div>
+      </div>
+      <div class="signal-grid">
+        ${signal('signalHttps', 'HTTPS')}
+        ${signal('signalNetwork', t('شبكة comm.ly', 'comm.ly network'))}
+        ${signal('signalActive', t('نشط', 'Active'))}
+        ${signal('signalKnownShortener', t('مختصر معروف', 'Known shortener'))}
+      </div>
+      <div class="tool-actions">
+        <a class="btn btn-primary btn-sm" id="lookupOpen" href="#" target="_blank" rel="noopener">${t('افتح الوجهة', 'Open destination')} ↗</a>
+        ${copyButton('lookupShorten', t('اختصر الوجهة', 'Shorten destination'))}
+      </div>
+      <div class="copy-row is-hidden" id="lookupShortBlock"><a class="result-link mono" id="lookupShortUrl" href="#" target="_blank" rel="noopener">—</a></div>
+    </div>
+  </div>`;
+}
+
+/* Link-in-bio builder — 9.com.ly */
+function bioTool({ site, lang }) {
+  const t = (ar, en) => pick(lang, ar, en);
+  return `${toolIntro(
+    t('جرّب منشئ الصفحة', 'Try the page builder'),
+    t('عدّل وابني معاينة حيّة، ثم انشر صفحتك على الشبكة بضغطة واحدة.', 'Edit and preview live, then publish your page on the network in one click.'),
+    t('أداة تفاعلية', 'Interactive tool'),
+    t('منشئ صفحة بايو', 'Bio page builder')
+  )}
+  <div class="tool-shell reveal" id="bioTool">
+    <div class="tool-toolbar"><div><div class="tool-toolbar-title">${t('محرر الصفحة', 'Page editor')}</div><p class="tool-panel-subtitle">${t('بلا تسجيل. يمكنك حفظ المسودة محلياً والعودة إليها لاحقاً.', 'No sign-up. Your draft is saved locally so you can return later.')}</p></div><span class="tool-toolbar-badge mono">LIVE PREVIEW</span></div>
+    <div class="tool-grid bio-layout">
+      <div class="tool-panel">
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('المحتوى', 'Content')}</span><span class="status-dot"></span></div>
+        <div class="tool-form">
+          <div class="tool-form-grid">
+            <label class="tool-field"><span class="tool-field-label">${t('الاسم المعروض', 'Display name')}</span><input id="bioName" type="text" maxlength="60" placeholder="Layla Ahmed" /></label>
+            <label class="tool-field"><span class="tool-field-label">${t('المعرّف', 'Handle')}</span><input id="bioHandle" type="text" maxlength="32" placeholder="layla" /></label>
+            <label class="tool-field"><span class="tool-field-label">${t('الرمز / الأحرف', 'Avatar / initials')}</span><input id="bioAvatar" type="text" maxlength="3" placeholder="L" /></label>
+            <label class="tool-field"><span class="tool-field-label">${t('الثيم', 'Theme')}</span>
+              <select id="bioTheme"><option value="midnight">Midnight</option><option value="sunrise">Sunrise</option><option value="mint">Mint</option><option value="rose">Rose</option></select>
+            </label>
+          </div>
+          <label class="tool-field"><span class="tool-field-label">${t('نبذة قصيرة', 'Short bio')}</span><textarea id="bioBio" rows="3" maxlength="160" placeholder="Creator · Designer · Coffee ☕"></textarea></label>
+          <div class="tool-panel-head"><span class="tool-panel-title">${t('الروابط', 'Links')}</span><button class="btn btn-ghost btn-sm" type="button" id="bioAddLink">+ ${t('أضف رابطاً', 'Add link')}</button></div>
+          <div class="bio-editor" id="bioLinks"></div>
+          <div class="tool-actions">
+            ${loadingButton('bioPublish', t('انشر الصفحة', 'Publish page'))}
+            ${copyButton('bioPreviewToggle', t('تبديل العرض', 'Toggle width'))}
+            ${copyButton('bioReset', t('مسح', 'Reset'))}
+          </div>
+          <p class="error-msg" id="bioError" role="alert"></p>
+        </div>
+      </div>
+      <div class="tool-panel">
+        <div class="tool-panel-head"><span class="tool-panel-title">${t('المعاينة', 'Preview')}</span><span class="tool-toolbar-badge mono">MOBILE</span></div>
+        <div class="bio-preview-wrap" id="bioPreviewWrap"><div class="bio-card bio-theme-midnight" id="bioPreview"></div></div>
+        <div class="result-card is-hidden" id="bioResult">
+          <div class="result-head"><span class="result-title">${t('صفحتك جاهزة', 'Your page is live')}</span><span class="result-subtitle" id="bioSlug">—</span></div>
+          <div class="copy-row"><a class="result-link mono" id="bioShortUrl" href="#" target="_blank" rel="noopener">—</a>${copyButton('bioCopyUrl', t('نسخ', 'Copy'))}</div>
+          <a class="btn btn-ghost btn-sm" id="bioOpenUrl" href="#" target="_blank" rel="noopener">${t('افتح الصفحة', 'Open page')} ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function engineTool({ site, lang }) {
+  if (site.id === 'n3') {
+    const t = (ar, en) => pick(lang, ar, en);
+    return `${toolIntro(l(site.toolTitle, lang), l(site.toolDesc, lang), t('أداة تفاعلية', 'Interactive tool'), l(site.tool, lang))}${qrTool({ site, lang })}`;
+  }
+  if (site.id === 'n4') return utmTool({ site, lang });
+  if (site.id === 'n6') return bulkTool({ site, lang });
+  if (site.id === 'n7') return apiTool({ site, lang });
+  if (site.id === 'n8') return lookupTool({ site, lang });
+  if (site.id === 'n9') return bioTool({ site, lang });
+  const t = (ar, en) => pick(lang, ar, en);
+  return `${toolIntro(l(site.toolTitle, lang), l(site.toolDesc, lang), t('أداة تفاعلية', 'Interactive tool'), l(site.tool, lang))}
+    <div class="network-note reveal">${arrowIcon()}<div><strong style="display:block;color:var(--foreground);margin-bottom:4px">${esc(l(site.toolTitle, lang))}</strong><span>${esc(l(site.toolDesc, lang))}</span></div><a class="btn btn-ghost btn-sm" style="margin-inline-start:auto" href="https://7.com.ly/">${t('جرّب API', 'Try the API')}</a></div>`;
+}
+
+function toolScriptTags(site) {
+  const map = {
+    n3: ['qr-lib.js', 'qr-tool.js'],
+    n4: ['utm-tool.js'],
+    n6: ['bulk-tool.js'],
+    n7: ['api-playground.js'],
+    n8: ['lookup-tool.js'],
+    n9: ['bio-tool.js']
+  };
+  return (map[site.id] || []).map((file) => `<script src="/assets/${file}"></script>`).join('\n  ');
+}
+
 function statsStrip({ site, lang, sites }) {
   const t = (ar, en) => pick(lang, ar, en);
   return `<div class="stats-strip">
@@ -427,16 +816,7 @@ function homePage({ site, lang, brand, sites, plans }) {
     </section>
 
     <section class="section section-tight" id="tool">
-      <div class="container">
-        <div class="network-note reveal" style="padding:26px 30px">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-3 7h6l-3 7"/><path d="M5 13 2 22h20l-3-9"/></svg>
-          <div>
-            <strong style="display:block;margin-bottom:4px;color:var(--foreground)">${esc(l(site.toolTitle, lang))}</strong>
-            <span>${esc(l(site.toolDesc, lang))}</span>
-          </div>
-          <a class="btn btn-ghost btn-sm" style="margin-inline-start:auto" href="${urlFor(site, 'home', lang)}#shorten">${t('جرّب الآن', 'Try now')}</a>
-        </div>
-      </div>
+      <div class="container">${engineTool({ site, lang })}</div>
     </section>
 
     ${analyticsMock}
@@ -871,6 +1251,7 @@ export function renderSite({ site, brand, sites, plans, addons }) {
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="/assets/theme.js"></script>
   <script src="/assets/app.js"></script>
+  ${toolScriptTags(site)}
   ${site.role === 'main' && ['login', 'register', 'app'].includes(def.key) ? '<script src="/assets/account.js"></script>' : ''}
 </body>
 </html>`;

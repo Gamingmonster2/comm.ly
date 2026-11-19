@@ -264,29 +264,80 @@ export async function handleLookup(context) {
   } catch {
     return json({ error: 'invalid_url' }, 400);
   }
-  const knownHost = NETWORK.some((entry) => entry.host === parsed.hostname);
-  if (!knownHost) return json({ error: 'unsupported_host', note: 'Only comm.ly network links can be expanded.' }, 400);
+  if (!['http:', 'https:'].includes(parsed.protocol)) return json({ error: 'invalid_url' }, 400);
+
+  const host = parsed.hostname.toLowerCase();
+  const requestHost = new URL(request.url).hostname.toLowerCase();
+  /* Test deployments use *.pages.dev; production uses the registered hosts. */
+  const pagesHosts = new Set([
+    'comm-ly.pages.dev',
+    ...NETWORK.filter((entry) => entry.role === 'engine').map((entry) => `comly-${entry.id}.pages.dev`)
+  ]);
+  const knownNetwork = host === requestHost || pagesHosts.has(host) || NETWORK.some((entry) => entry.host === host);
+  const knownShortener = /(^|\.)(bit\.ly|tinyurl\.com|t\.co|goo\.gl|is\.gd|ow\.ly|buff\.ly|rebrand\.ly|cutt\.ly|rb\.gy|short\.link|clck\.ru|v\.gd|lnkd\.in|s\.id)$/i.test(host);
+  const https = parsed.protocol === 'https:';
+
+  /* External URLs are inspected without following them — no SSRF, no redirect. */
+  if (!knownNetwork) {
+    return json({
+      found: true,
+      external: true,
+      source: 'external',
+      code: parsed.pathname.split('/').filter(Boolean).pop() || null,
+      destination: parsed.toString(),
+      host,
+      expiresAt: null,
+      expired: false,
+      active: true,
+      safeProtocol: https,
+      https,
+      knownShortener,
+      signals: {
+        https,
+        network: false,
+        knownShortener,
+        expired: false,
+        active: true
+      },
+      note: knownShortener
+        ? 'This is a known third-party shortener. The final destination was not followed; open with care.'
+        : 'This is a regular external URL. It was inspected without following redirects.'
+    }, 200);
+  }
+
   const code = parsed.pathname.replace(/^\/|\/$/g, '');
-  if (!code || code.includes('/')) return json({ found: false, note: 'not a short link' }, 404);
+  if (!code || code.includes('/')) return json({ found: false, note: 'not a short link', host }, 404);
   let record = null;
   try {
     record = await env.CACHE.get(`l:${code}`, 'json');
   } catch { /* ignore */ }
   if (!record) {
     const row = await env.DB.prepare('SELECT url, expires_at, active, clicks FROM links WHERE code = ?').bind(code).first();
-    if (!row) return json({ found: false, code }, 404);
+    if (!row) return json({ found: false, code, host }, 404);
     record = { u: row.url, e: row.expires_at, a: row.active };
   }
   const expired = record.e ? Date.parse(record.e) < Date.now() : false;
+  const active = record.a !== 0;
   return json({
     found: true,
+    external: false,
+    source: 'network',
     code,
     destination: record.u,
     expiresAt: record.e || null,
     expired,
-    active: record.a !== 0,
-    safeProtocol: /^https?:\/\//i.test(record.u),
-    host: parsed.hostname
+    active,
+    safeProtocol: /^https?:\/\//i.test(record.u) && !expired && active,
+    https: /^https:\/\//i.test(record.u),
+    knownShortener: false,
+    host,
+    signals: {
+      https: /^https:\/\//i.test(record.u),
+      network: true,
+      knownShortener: false,
+      expired,
+      active
+    }
   });
 }
 

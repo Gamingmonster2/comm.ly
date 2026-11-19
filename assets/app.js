@@ -132,7 +132,11 @@
           shortLink.textContent = data.shortUrl;
           shortLink.href = data.shortUrl;
           openBtn.href = data.shortUrl;
-          if (qrImg) qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=' + encodeURIComponent(data.shortUrl);
+          if (qrImg) {
+            qrImg.src = window.ComlyQR
+              ? window.ComlyQR.dataUrl(data.shortUrl, { level: 'M', scale: 6, quiet: 2 })
+              : 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=' + encodeURIComponent(data.shortUrl);
+          }
           renderMeta();
           resultCard.classList.remove('is-hidden');
         })

@@ -17,6 +17,7 @@ function check(label, ok, detail = '') {
 const links = new Map();
 const daily = new Map();
 const contacts = [];
+const bios = new Map();
 
 function runStatement(sql, args) {
   if (/^INSERT INTO links/i.test(sql)) {
@@ -44,6 +45,17 @@ function runStatement(sql, args) {
     contacts.push(args);
     return;
   }
+  if (/^INSERT INTO bio_pages/i.test(sql)) {
+    const [slug, siteId, title, handle, bio, theme, avatar, linksJson] = args;
+    if (bios.has(slug)) throw new Error('UNIQUE constraint failed: bio_pages.slug');
+    bios.set(slug, { slug, site_id: siteId, title, handle, bio, theme, avatar, links_json: linksJson, views: 0 });
+    return;
+  }
+  if (/^UPDATE bio_pages SET views/i.test(sql)) {
+    const row = bios.get(args[0]);
+    if (row) row.views += 1;
+    return;
+  }
   throw new Error(`Unhandled SQL in test stub: ${sql.slice(0, 60)}`);
 }
 
@@ -60,9 +72,12 @@ class Statement {
     return { success: true };
   }
   async first() {
-    if (/^SELECT url, expires_at, active FROM links WHERE code = \?/i.test(this.sql)) {
+    if (/^SELECT url, expires_at, active(?:, clicks)? FROM links WHERE code = \?/i.test(this.sql)) {
       const row = links.get(this.args[0]);
       return row ? { url: row.url, expires_at: row.expires_at, active: row.active } : null;
+    }
+    if (/^SELECT slug, title, handle, bio, theme, avatar, links_json FROM bio_pages WHERE slug = \?/i.test(this.sql)) {
+      return bios.get(this.args[0]) || null;
     }
     return null;
   }
@@ -193,6 +208,60 @@ check('GET /api/health → 200', res.status === 200);
 // 13) click aggregation recorded
 check('click counted on link', links.get(firstCode).clicks >= 1);
 check('daily stats written', [...daily.values()].some((value) => value >= 1));
+
+// 14) bulk shortening endpoint
+res = await handle(context(`${base}/api/shorten/bulk`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ urls: ['https://example.com/b1', 'https://example.com/b2', 'javascript:alert(1)'], expiresIn: 0 })
+}));
+data = await res.json();
+check('POST /api/shorten/bulk → 200', res.status === 200, String(res.status));
+check('bulk created two links', data.created === 2, JSON.stringify(data));
+check('bulk reported invalid URL', data.failed === 1 && data.results[2].error === 'invalid_url');
+
+// 15) lookup: network + external
+res = await handle(context(`${base}/api/lookup?url=${encodeURIComponent(`https://3.com.ly/${firstCode}`)}`));
+data = await res.json();
+check('lookup network link → destination', data.found && data.destination === 'https://example.com/long/path', JSON.stringify(data));
+res = await handle(context(`${base}/api/lookup?url=${encodeURIComponent('https://bit.ly/abc123')}`));
+data = await res.json();
+check('lookup external shortener without following', data.external && data.knownShortener && data.destination.includes('bit.ly'), JSON.stringify(data));
+res = await handle(context(`https://comm-ly.pages.dev/api/lookup?url=${encodeURIComponent(`https://comly-n3.pages.dev/${firstCode}`)}`));
+data = await res.json();
+check('lookup recognizes pages.dev network host', data.found && !data.external && data.destination === 'https://example.com/long/path', JSON.stringify(data));
+
+// 16) bio pages
+res = await handle(context(`${base}/api/bio`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({
+    title: 'Layla', handle: 'layla-test', bio: 'Creator', theme: 'mint', avatar: 'L',
+    links: [{ title: 'Site', url: 'https://example.com' }, { title: 'Bad', url: 'javascript:alert(1)' }]
+  })
+}));
+data = await res.json();
+check('POST /api/bio → 201', res.status === 201, String(res.status));
+check('bio slug generated', data.slug === 'layla-test', JSON.stringify(data));
+check('bio stored in D1', bios.has('layla-test'));
+check('bio invalid links dropped', JSON.parse(bios.get('layla-test').links_json).length === 1);
+
+res = await handle(context(`${base}/b/layla-test`));
+check('GET /b/:slug → 200', res.status === 200, String(res.status));
+const bioHtml = await res.text();
+check('bio page contains name', bioHtml.includes('Layla'));
+check('bio page escapes content', bioHtml.includes('&lt;') === false || !bioHtml.includes('<script>'));
+
+res = await handle(context(`${base}/api/bio/layla-test`));
+data = await res.json();
+check('GET /api/bio/:slug → 200', res.status === 200 && data.page.slug === 'layla-test');
+
+res = await handle(context(`${base}/api/bio`, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ title: 'Layla 2', handle: 'layla-test', links: [{ title: 'Site', url: 'https://example.com' }] })
+}));
+check('duplicate bio handle → 409', res.status === 409, String(res.status));
 
 console.log(failures === 0 ? '\nALL ENGINE TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures ? 1 : 0);

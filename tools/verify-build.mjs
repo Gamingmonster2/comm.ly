@@ -80,4 +80,5 @@ const contact = await fetch(base + '/api/contact', {
 check('contact form endpoint → 200', contact.status === 200, String(contact.status));
 
 console.log(failures === 0 ? '\nALL BUILD TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
-process.exit(failures ? 1 : 0);
+/* Let undici drains its Windows handles naturally; process.exit() here triggers a UV_HANDLE_CLOSING assertion after the tests pass. */
+process.exitCode = failures ? 1 : 0;
