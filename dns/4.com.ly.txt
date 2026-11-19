@@ -1,0 +1,5 @@
+; comm.ly network - Cloudflare Pages custom domain
+; Zone: 4.com.ly    Box: 4.com.ly  [ comly-n4.pages.dev ]
+; Dashboard: 4.com.ly > DNS > Records > Import and Export > Import DNS records
+; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).
+4.com.ly.	1	IN	CNAME	comly-n4.pages.dev. ; cf_tags=cf-proxied:true

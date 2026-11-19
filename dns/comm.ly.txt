@@ -1,0 +1,9 @@
+; comm.ly network - Cloudflare Pages custom domain
+; Zone: comm.ly     Box: comm.ly  [ comm-ly.pages.dev ]
+; ONLY use this file after comm.ly nameservers point to Cloudflare:
+;   ian.ns.cloudflare.com
+;   nancy.ns.cloudflare.com
+; Currently comm.ly uses Afternic nameservers (ns1/ns2.afternic.com).
+; Dashboard: comm.ly > DNS > Records > Import and Export > Import DNS records
+; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).
+comm.ly.	1	IN	CNAME	comm-ly.pages.dev. ; cf_tags=cf-proxied:true
