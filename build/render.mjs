@@ -4,6 +4,7 @@
  * Pure Node, zero dependencies.
  */
 import { escapeHtml as esc, loc } from './util.mjs';
+import { articlesFor, IMAGE_CREDIT } from '../content/articles.mjs';
 
 const l = (obj, lang) => loc(obj, lang);
 const pick = (lang, ar, en) => (lang === 'ar' ? ar : en);
@@ -38,6 +39,10 @@ export function markSvg(site, size = 38, suffix = 'nav') {
 /* Shared URL helpers                                                  */
 /* ------------------------------------------------------------------ */
 function urlFor(site, key, lang) {
+  if (typeof key === 'string' && key.startsWith('article:')) {
+    const slug = key.slice('article:'.length);
+    return lang === 'ar' ? `/ar/blog/${slug}/` : `/blog/${slug}/`;
+  }
   const map = {
     home: { en: '/', ar: '/ar/' },
     network: { en: '/network/', ar: '/ar/network/' },
@@ -643,19 +648,71 @@ function bioTool({ site, lang }) {
   </div>`;
 }
 
+/* Plain-language explanation placed directly under every interactive tool. */
+function toolExplanation({ site, lang }) {
+  const t = (ar, en) => pick(lang, ar, en);
+  const copy = {
+    n3: {
+      what: t('مولّد رموز QR: يحوّل رابطك إلى مربع يمكن مسحه بالهاتف.', 'A QR generator: it turns your link into a square you can scan with a phone.'),
+      offers: t('يوفّر رمزاً جاهزاً للطباعة، وأحجاماً مختلفة، ونصاً يمكن تخصيصه، وكل شيء يعمل داخل متصفحك دون رفع بياناتك.', 'It gives you a print-ready code, several sizes, optional custom text, and everything runs in your browser without uploading your data.'),
+      who: t('مفيد للمطاعم والمعارض وبطاقات العمل وأي مكان يريد فيه الناس فتح رابط بمجرد التصوير.', 'Useful for menus, events, business cards and anywhere people should open a link just by pointing a camera.')
+    },
+    n4: {
+      what: t('باني روابط الحملات: يضيف علامات UTM إلى رابطك ليعرف محللوك من أين جاء الزائر.', 'A campaign URL builder: it adds UTM tags so your analytics can show where a visitor came from.'),
+      offers: t('اختر مصدر الحملة ووسيطها واسمها، وسيجهّز الرابط النهائي جاهزاً للنسخ في إعلانك أو منشورك.', 'Pick the source, medium and campaign name, and it prepares the final link ready to paste into your ad or post.'),
+      who: t('لأصحاب المتاجر ومديري التسويق الذين يريدون معرفة أي إعلان يجلب نقرات فعلية.', 'For shop owners and marketers who want to know which advert brings real clicks.')
+    },
+    n6: {
+      what: t('أداة الاختصار الجماعي: تختصر عشرات الروابط في عملية واحدة بدلاً من تكرار النقر.', 'A bulk shortener: it shortens dozens of links in one go instead of repeating the same steps.'),
+      offers: t('الصق قائمة روابط أو ارفع ملف CSV، وستحصل على جدول بالروابط القصيرة مع إمكانية نسخها دفعة واحدة.', 'Paste a list of URLs or upload a CSV, and you get a table of short links you can copy all at once.'),
+      who: t('مناسبة لمن ينشر قوائم منتجات أو ملفات أو روابط ندوات كثيرة في وقت واحد.', 'Ideal for publishing product lists, resource files or many event links at once.')
+    },
+    n7: {
+      what: t('ملعب API: نافذة بسيطة لتجربة نقاط الخدمة ورؤية الردّ الفعلي قبل كتابة أي كود.', 'An API playground: a simple window to try endpoints and see the real response before writing any code.'),
+      offers: t('اختر النقطة وأدخل المعاملات واضغط إرسال؛ ستظهر النتيجة بصيغة JSON ورمز الحالة مباشرة.', 'Choose an endpoint, fill the parameters and press send; the JSON result and status code appear immediately.'),
+      who: t('للمطوّرين وللفضوليين الذين يريدون فهم ما تفعله الخدمة خلف الكواليس.', 'For developers and curious users who want to understand what the service does behind the scenes.')
+    },
+    n8: {
+      what: t('فاحص الروابط: يخبرك إلى أين يذهب الرابط المختصر قبل أن تفتحه بنفسك.', 'A link checker: it tells you where a short link goes before you open it yourself.'),
+      offers: t('الصق رابطاً لترى الوجهة واسم النطاق وحالة الرابط، دون متابعة تحويلات خطيرة أو تنزيل أي ملف.', 'Paste a link to see its destination, domain and status, without following risky redirects or downloading anything.'),
+      who: t('مفيد للتأكد من الروابط التي تصلك في الرسائل قبل مشاركتها أو الوثوق بها.', 'Useful for checking links you receive in messages before sharing or trusting them.')
+    },
+    n9: {
+      what: t('باني صفحة الملف الشخصي: ينشئ صفحة صغيرة تحمل أهم روابطك في مكان واحد.', 'A bio-page builder: it creates a small page that holds your most important links in one place.'),
+      offers: t('أضف اسمك وروابطك واختر لوناً، وستحصل على صفحة جاهزة للمشاركة في حساباتك الاجتماعية.', 'Add your name, links and a colour, and you get a page ready to share on your social accounts.'),
+      who: t('للمبدعين وأصحاب المتاجر الصغيرة الذين يريدون رابطاً واحداً في السيرة الذاتية.', 'For creators and small shop owners who want a single link in their bio.')
+    }
+  };
+  const c = copy[site.id] || {
+    what: t('أداة اختصار الروابط: تحوّل الرابط الطويل إلى رابط قصير سهل المشاركة.', 'A link shortener: it turns a long URL into a short, shareable link.'),
+    offers: t('تتيح لك إنشاء رابط بكلمة مخصصة وتحديد مدة صلاحيته ونسخه فوراً.', 'It lets you create a link with a custom word, set an expiry and copy it instantly.'),
+    who: t('لأي شخص يرسل روابط في الرسائل أو المنشورات أو البريد.', 'For anyone who sends links in messages, posts or email.')
+  };
+  const arrow = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  return `<section class="tool-explain reveal" aria-label="${t('شرح الأداة', 'About this tool')}">
+    <div class="tool-explain-head">${arrow}<h2>${t('ما هذه الأداة وماذا تقدّم؟', 'What is this tool and what does it offer?')}</h2></div>
+    <div class="tool-explain-grid">
+      <div class="explain-card"><span class="explain-num mono">01</span><strong>${t('ما هي؟', 'What it is')}</strong><p>${esc(c.what)}</p></div>
+      <div class="explain-card"><span class="explain-num mono">02</span><strong>${t('ماذا تقدّم؟', 'What it offers')}</strong><p>${esc(c.offers)}</p></div>
+      <div class="explain-card"><span class="explain-num mono">03</span><strong>${t('لمن هي؟', 'Who it is for')}</strong><p>${esc(c.who)}</p></div>
+    </div>
+  </section>`;
+}
+
 function engineTool({ site, lang }) {
+  const explain = toolExplanation({ site, lang });
   if (site.id === 'n3') {
     const t = (ar, en) => pick(lang, ar, en);
-    return `${toolIntro(l(site.toolTitle, lang), l(site.toolDesc, lang), t('أداة تفاعلية', 'Interactive tool'), l(site.tool, lang))}${qrTool({ site, lang })}`;
+    return `${toolIntro(l(site.toolTitle, lang), l(site.toolDesc, lang), t('أداة تفاعلية', 'Interactive tool'), l(site.tool, lang))}${qrTool({ site, lang })}${explain}`;
   }
-  if (site.id === 'n4') return utmTool({ site, lang });
-  if (site.id === 'n6') return bulkTool({ site, lang });
-  if (site.id === 'n7') return apiTool({ site, lang });
-  if (site.id === 'n8') return lookupTool({ site, lang });
-  if (site.id === 'n9') return bioTool({ site, lang });
+  if (site.id === 'n4') return `${utmTool({ site, lang })}${explain}`;
+  if (site.id === 'n6') return `${bulkTool({ site, lang })}${explain}`;
+  if (site.id === 'n7') return `${apiTool({ site, lang })}${explain}`;
+  if (site.id === 'n8') return `${lookupTool({ site, lang })}${explain}`;
+  if (site.id === 'n9') return `${bioTool({ site, lang })}${explain}`;
   const t = (ar, en) => pick(lang, ar, en);
   return `${toolIntro(l(site.toolTitle, lang), l(site.toolDesc, lang), t('أداة تفاعلية', 'Interactive tool'), l(site.tool, lang))}
-    <div class="network-note reveal">${arrowIcon()}<div><strong style="display:block;color:var(--foreground);margin-bottom:4px">${esc(l(site.toolTitle, lang))}</strong><span>${esc(l(site.toolDesc, lang))}</span></div><a class="btn btn-ghost btn-sm" style="margin-inline-start:auto" href="https://7.com.ly/">${t('جرّب API', 'Try the API')}</a></div>`;
+    <div class="network-note reveal">${arrowIcon()}<div><strong style="display:block;color:var(--foreground);margin-bottom:4px">${esc(l(site.toolTitle, lang))}</strong><span>${esc(l(site.toolDesc, lang))}</span></div><a class="btn btn-ghost btn-sm" style="margin-inline-start:auto" href="https://7.com.ly/">${t('جرّب API', 'Try the API')}</a></div>${explain}`;
 }
 
 function toolScriptTags(site) {
@@ -837,6 +894,17 @@ function homePage({ site, lang, brand, sites, plans }) {
             'شبكة comm.ly تُدار من العلامة الأساسية comm.ly — ويمكن إضافة نطاقات جديدة إلى الشبكة في أي وقت دون التأثير على بقية المواقع.',
             'The comm.ly network is led by the home brand comm.ly — new domains can join the network at any time without affecting the other sites.')}</span>
         </div>
+      </div>
+    </section>
+
+    <section class="section section-tight" id="articles">
+      <div class="container">
+        <div class="section-head reveal">
+          <span class="eyebrow">${t('من المدونة', 'From the blog')}</span>
+          <h2>${t('مقالات قصيرة تساعدك', 'Short reads that help')}</h2>
+          <p class="lead">${t('شروح بسيطة للأدوات، وأفكار لاستخدام الروابط بذكاء.', 'Plain explanations of the tools, and ideas for using links well.')}</p>
+        </div>
+        <div class="related-grid">${articlesFor(site).filter((a) => a.lang === lang).slice(0, 3).map((a) => `<a class="related-card reveal" href="${urlFor(site, a.key, lang)}"><span class="related-kicker">${esc(a.keyword)}</span><strong>${esc(a.title)}</strong><span class="related-more">${t('اقرأ المقال', 'Read article')} →</span></a>`).join('')}</div>
       </div>
     </section>
 
@@ -1197,7 +1265,77 @@ function appPage({ site, lang }) {
   </div>`;
 }
 
+/* ------------------------------------------------------------------ */
+/* Blog / article page                                                 */
+/* ------------------------------------------------------------------ */
+function articleJsonLd({ site, article, lang, brand }) {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Article',
+        headline: article.title,
+        description: article.description,
+        image: [article.image],
+        inLanguage: lang,
+        keywords: article.keyword,
+        datePublished: today(),
+        dateModified: today(),
+        author: { '@type': 'Organization', name: 'comm.ly network', url: brand.url },
+        publisher: { '@type': 'Organization', name: site.host, url: `https://${site.host}/` },
+        mainEntityOfPage: `https://${site.host}${urlFor(site, article.key, lang)}`
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: site.host, item: `https://${site.host}${urlFor(site, 'home', lang)}` },
+          { '@type': 'ListItem', position: 2, name: lang === 'ar' ? 'المقالات' : 'Articles', item: `https://${site.host}${urlFor(site, 'home', lang)}#articles` },
+          { '@type': 'ListItem', position: 3, name: article.title }
+        ]
+      }
+    ]
+  };
+}
+
+function articlePage({ site, article, lang, brand, articles }) {
+  const t = (ar, en) => pick(lang, ar, en);
+  const related = articles
+    .filter((a) => a.lang === lang && a.slug !== article.slug)
+    .slice(0, 3);
+  return `<main>
+    <article class="article-page">
+      <div class="container article-wrap">
+        <nav class="breadcrumbs" aria-label="${t('مسار التنقل', 'Breadcrumb')}">
+          <a href="${urlFor(site, 'home', lang)}">${site.host}</a><span>/</span>
+          <a href="${urlFor(site, 'home', lang)}#articles">${t('المقالات', 'Articles')}</a><span>/</span>
+          <span>${esc(article.title)}</span>
+        </nav>
+        <header class="article-head">
+          <span class="eyebrow">${esc(article.keyword)}</span>
+          <h1>${esc(article.title)}</h1>
+          <p class="article-intro">${esc(article.intro)}</p>
+          <div class="article-meta"><span>${t('شبكة comm.ly', 'comm.ly network')}</span><span>•</span><time datetime="${today()}">${today()}</time><span>•</span><span>${t('قراءة قصيرة', 'Quick read')}</span></div>
+        </header>
+        <figure class="article-figure">
+          <img src="${article.image}" alt="${esc(article.imageAlt)}" loading="lazy" width="1200" height="630" />
+          <figcaption>${IMAGE_CREDIT}</figcaption>
+        </figure>
+        <div class="article-body">
+          <p class="article-lead">${esc(article.description)}</p>
+          ${article.sections.map((s) => `<section><h2>${esc(s.h)}</h2>${s.p.map((p) => `<p>${esc(p)}</p>`).join('')}</section>`).join('')}
+          <div class="article-cta network-note">
+            <div><strong>${t('جاهز للتجربة؟', 'Ready to try it?')}</strong><span>${t(`استخدم ${site.host} الآن — الأداة تعمل فوراً بلا تسجيل.`, `Use ${site.host} now — the tool works instantly with no sign-up.`)}</span></div>
+            <a class="btn btn-primary btn-sm" href="${urlFor(site, 'home', lang)}#tool">${t('جرّب الأداة', 'Try the tool')} ↗</a>
+          </div>
+        </div>
+        ${related.length ? `<section class="article-related"><h2>${t('اقرأ أيضاً', 'Keep reading')}</h2><div class="related-grid">${related.map((r) => `<a class="related-card reveal" href="${urlFor(site, r.key, lang)}"><span class="related-kicker">${esc(r.keyword)}</span><strong>${esc(r.title)}</strong><span class="related-more">${t('اقرأ المقال', 'Read article')} →</span></a>`).join('')}</div></section>` : ''}
+      </div>
+    </article>
+  </main>`;
+}
+
 export function renderSite({ site, brand, sites, plans, addons }) {
+  const articles = articlesFor(site);
   const siteCss = `
     :root { --brand: #fafafa; --brand-2: #a1a1aa; --c1: ${site.colors[0]}; --c2: ${site.colors[1]}; }
   `;
@@ -1216,14 +1354,27 @@ export function renderSite({ site, brand, sites, plans, addons }) {
     defs.push({ key: 'register', titleAr: 'إنشاء حساب — comm.ly', titleEn: 'Create account — comm.ly', descAr: 'حساب مجاني: 200 رابط شهرياً وتحليلات.', descEn: 'Free account: 200 links/month and analytics.' });
     defs.push({ key: 'app', titleAr: 'لوحة الحساب — comm.ly', titleEn: 'Account dashboard — comm.ly', descAr: 'إدارة روابطك وتحليلاتك.', descEn: 'Manage your links and analytics.' });
   }
+  for (const article of articles) {
+    defs.push({
+      key: article.key,
+      langOnly: article.lang,
+      titleAr: article.lang === 'ar' ? `${article.title} | ${site.host}` : undefined,
+      titleEn: article.lang === 'en' ? `${article.title} | ${site.host}` : undefined,
+      descAr: article.lang === 'ar' ? article.description : undefined,
+      descEn: article.lang === 'en' ? article.description : undefined
+    });
+  }
 
   for (const def of defs) {
-    for (const lang of ['ar', 'en']) {
-      const title = def.titleAr ? pick(lang, def.titleAr, def.titleEn) : l(site[def.titleKey], lang);
-      const description = def.descAr ? pick(lang, def.descAr, def.descEn) : l(site[def.descKey], lang);
+    const langs = def.langOnly ? [def.langOnly] : ['ar', 'en'];
+    for (const lang of langs) {
+      const article = def.key.startsWith('article:') ? articles.find((a) => a.key === def.key && a.lang === lang) : null;
+      const title = article ? article.title : (def.titleAr ? pick(lang, def.titleAr, def.titleEn) : l(site[def.titleKey], lang));
+      const description = article ? article.description : (def.descAr ? pick(lang, def.descAr, def.descEn) : l(site[def.descKey], lang));
       const path = { key: def.key, lang };
       let body;
-      if (def.key === 'home') body = homePage({ site, lang, brand, sites, plans });
+      if (article) body = articlePage({ site, article, lang, brand, articles });
+      else if (def.key === 'home') body = homePage({ site, lang, brand, sites, plans });
       else if (def.key === 'network') body = networkPage({ site, lang, brand, sites });
       else if (def.key === 'pricing') body = pricingPage({ site, lang, brand, plans, addons });
       else if (def.key === 'login' || def.key === 'register') body = authPage({ kind: def.key, site, lang });
@@ -1231,14 +1382,16 @@ export function renderSite({ site, brand, sites, plans, addons }) {
       else if (def.key === 'privacy' || def.key === 'terms') body = legalContent(def.key, { site, lang, brand });
       else body = contactPage({ site, lang, brand });
 
-      const jsonLd = def.key === 'home' ? {
-        '@context': 'https://schema.org',
-        '@graph': [
-          { '@type': 'Organization', name: site.host, url: `https://${site.host}/`, parentOrganization: { '@type': 'Organization', name: 'comm.ly', url: brand.url }, sameAs: sites.map((s) => `https://${s.host}/`) },
-          { '@type': 'WebSite', name: site.host, url: `https://${site.host}/`, inLanguage: ['ar', 'en'] },
-          { '@type': 'FAQPage', mainEntity: site.faq.map((item) => ({ '@type': 'Question', name: l(item.q, lang), acceptedAnswer: { '@type': 'Answer', text: l(item.a, lang) } })) }
-        ]
-      } : null;
+      const jsonLd = article
+        ? articleJsonLd({ site, article, lang, brand })
+        : (def.key === 'home' ? {
+          '@context': 'https://schema.org',
+          '@graph': [
+            { '@type': 'Organization', name: site.host, url: `https://${site.host}/`, parentOrganization: { '@type': 'Organization', name: 'comm.ly', url: brand.url }, sameAs: sites.map((s) => `https://${s.host}/`) },
+            { '@type': 'WebSite', name: site.host, url: `https://${site.host}/`, inLanguage: ['ar', 'en'] },
+            { '@type': 'FAQPage', mainEntity: site.faq.map((item) => ({ '@type': 'Question', name: l(item.q, lang), acceptedAnswer: { '@type': 'Answer', text: l(item.a, lang) } })) }
+          ]
+        } : null);
 
       const html = `${head({ site, lang, title, description, path, siteCss, jsonLd })}
 <body>

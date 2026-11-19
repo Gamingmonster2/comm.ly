@@ -41,10 +41,13 @@ function sitemapEntries(site, pages) {
   const rows = [];
   for (const key of Object.keys(byKey)) {
     const pair = byKey[key];
+    const pairs = (pair.ar && pair.en)
+      ? `<xhtml:link rel="alternate" hreflang="ar" href="${pair.ar}"/><xhtml:link rel="alternate" hreflang="en" href="${pair.en}"/><xhtml:link rel="alternate" hreflang="x-default" href="${pair.ar}"/>`
+      : `<xhtml:link rel="alternate" hreflang="x-default" href="${pair.ar || pair.en}"/>`;
     for (const lang of ['ar', 'en']) {
       if (!pair[lang]) continue;
       rows.push(
-        `  <url><loc>${pair[lang]}</loc><xhtml:link rel="alternate" hreflang="ar" href="${pair.ar}"/><xhtml:link rel="alternate" hreflang="en" href="${pair.en}"/><xhtml:link rel="alternate" hreflang="x-default" href="${pair.ar}"/><changefreq>weekly</changefreq></url>`
+        `  <url><loc>${pair[lang]}</loc>${pairs}<changefreq>weekly</changefreq></url>`
       );
     }
   }

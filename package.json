@@ -14,6 +14,9 @@
     "test:qr": "node tools/qr-test.mjs",
     "test:tools": "node tools/check-utm-bulk.mjs && node tools/check-api-lookup.mjs && node tools/check-bio.mjs && node tools/check-tool-contract.mjs",
     "test:dom": "node tools/dom-test.mjs",
+    "session:start": "node scripts/session-guard.mjs start",
+    "session:check": "node scripts/session-guard.mjs check",
+    "session:expire": "node scripts/session-guard.mjs expire",
     "shots": "node tools/screenshots.mjs"
   },
   "devDependencies": {
