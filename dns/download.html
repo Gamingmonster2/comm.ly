@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>تنزيل ملف DNS — شبكة comm.ly</title>
+<style>
+  :root{--bg:#08080a;--card:#111114;--border:#2a2a30;--fg:#fafafa;--mut:#a1a1aa;--c1:#7c5cff;--c2:#22d3ee}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(900px 500px at 50% -10%,#1a1330 0%,transparent 60%),var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px}
+  .wrap{width:min(640px,100%)}
+  .head{text-align:center;margin-bottom:22px}
+  .eyebrow{display:inline-block;font-size:12px;letter-spacing:.08em;color:var(--mut);border:1px solid var(--border);border-radius:999px;padding:6px 14px;background:#121216}
+  h1{font-size:clamp(1.5rem,4vw,2.1rem);margin:16px 0 8px;line-height:1.4}
+  .lead{color:var(--mut);margin:0;font-size:15px;line-height:1.8}
+  .progress{display:flex;gap:6px;justify-content:center;margin:18px 0 0}
+  .dot{width:26px;height:5px;border-radius:99px;background:#27272a}
+  .dot.on{background:linear-gradient(90deg,var(--c1),var(--c2))}
+  .box{width:100%;text-align:right;background:linear-gradient(160deg,#15151a,#0e0e11);border:1px solid var(--border);border-radius:22px;padding:30px;cursor:pointer;color:inherit;font:inherit;transition:transform .18s,border-color .18s,box-shadow .18s;position:relative;overflow:hidden}
+  .box::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(124,92,255,.08));pointer-events:none}
+  .box:hover{border-color:var(--c1);transform:translateY(-3px);box-shadow:0 18px 50px rgba(124,92,255,.16)}
+  .box:active{transform:translateY(-1px)}
+  .kicker{font-size:12px;color:var(--c2);letter-spacing:.05em;margin-bottom:12px;display:block}
+  .domain{font-size:clamp(1.9rem,6vw,3rem);font-weight:800;letter-spacing:-.02em;margin:0 0 6px;direction:ltr;text-align:right}
+  .sub{color:var(--mut);font-size:14px;margin:0 0 22px}
+  .slot{display:block;background:#0a0a0c;border:1px dashed #3a3a44;border-radius:14px;padding:18px 20px;margin-bottom:22px}
+  .slot-label{display:block;font-size:11px;color:var(--mut);margin-bottom:8px}
+  .dns{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:clamp(1rem,3.4vw,1.35rem);color:var(--fg);direction:ltr;text-align:right;word-break:break-all}
+  .cta{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(90deg,var(--c1),#5b7cff);border-radius:12px;padding:14px 18px;font-weight:700}
+  .cta span:last-child{font-size:22px;line-height:1}
+  .filename{margin-top:14px;font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--c2);direction:ltr;text-align:right}
+  .note{margin-top:16px;border:1px solid #4a3a1a;background:#1d1708;color:#f5d68a;border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.8}
+  .steps{margin-top:26px;color:var(--mut);font-size:13px;line-height:2;border-top:1px solid var(--border);padding-top:18px}
+  .steps b{color:var(--fg);font-weight:600}
+  .done{color:#4ade80}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow" id="stepLabel">ملف DNS — ١ من ٧</span>
+      <h1>اضغط على الصندوق لتنزيل الملف</h1>
+      <p class="lead">يُحمّل الملف باسم النطاق الكامل، ثم ترفعه مباشرة في كلاودفلير عبر <b>Import DNS records</b>.</p>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <button class="box" id="box" type="button">
+      <span class="kicker">جاهز للتنزيل ⬇</span>
+      <p class="domain" id="domain"></p>
+      <p class="sub" id="targetLabel"></p>
+      <span class="slot">
+        <span class="slot-label">الـ DNS المطلوب إدخاله داخل الصندوق</span>
+        <span class="dns" id="dns"></span>
+      </span>
+      <span class="cta"><span id="ctaText">اضغط هنا للتنزيل</span><span>⤓</span></span>
+      <span class="filename" id="filename"></span>
+    </button>
+
+    <div class="note" id="note" hidden></div>
+
+    <div class="steps">
+      <b>خطوات الرفع:</b> كلاودفلير ← النطاق ← DNS ← Records ← Import and Export ← Import DNS records ← اختر الملف ← اترك <b>Proxy imported DNS records</b> مفعّلاً ← Import.<br>
+      بعد التنزيل قل <b>«تم»</b> وسأعطيك النطاق التالي فوراً.
+    </div>
+  </div>
+
+<script>
+// ---- change this index to advance to the next domain ----
+const STEP = 0;
+// ---------------------------------------------------------
+
+const items = [
+  {
+    domain: 'comm.ly',
+    target: 'comm-ly.pages.dev',
+    note: 'تنبيه: comm.ly يستخدم حالياً أسماء خوادم Afternic (ns1/ns2.afternic.com) وليس ضمن حساب كلاودفلير. الملف جاهز، لكن الاستيراد يعمل بعد تحويل nameservers إلى ian.ns.cloudflare.com و nancy.ns.cloudflare.com، أو بعد إضافة CNAME عند Afternic مباشرة.',
+    content: '; comm.ly network - Cloudflare Pages custom domain\n; Zone: comm.ly     Box: comm.ly  [ comm-ly.pages.dev ]\n; ONLY use this file after comm.ly nameservers point to Cloudflare:\n;   ian.ns.cloudflare.com\n;   nancy.ns.cloudflare.com\n; Currently comm.ly uses Afternic nameservers (ns1/ns2.afternic.com).\n; Dashboard: comm.ly > DNS > Records > Import and Export > Import DNS records\n; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).\ncomm.ly.\t1\tIN\tCNAME\tcomm-ly.pages.dev. ; cf_tags=cf-proxied:true\n'
+  },
+  { domain:'3.com.ly', target:'comly-n3.pages.dev', content:'; comm.ly network - Cloudflare Pages custom domain\n; Zone: 3.com.ly    Box: 3.com.ly  [ comly-n3.pages.dev ]\n; Dashboard: 3.com.ly > DNS > Records > Import and Export > Import DNS records\n; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).\n3.com.ly.\t1\tIN\tCNAME\tcomly-n3.pages.dev. ; cf_tags=cf-proxied:true\n' },
+  { domain:'4.com.ly', target:'comly-n4.pages.dev', content:'; comm.ly network - Cloudflare Pages custom domain\n; Zone: 4.com.ly    Box: 4.com.ly  [ comly-n4.pages.dev ]\n; Dashboard: 4.com.ly > DNS > Records > Import and Export > Import DNS records\n; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).\n4.com.ly.\t1\tIN\tCNAME\tcomly-n4.pages.dev. ; cf_tags=cf-proxied:true\n' },
+  { domain:'6.com.ly', target:'comly-n6.pages.dev', content:'; comm.ly network - Cloudflare Pages custom domain\n; Zone: 6.com.ly    Box: 6.com.ly  [ comly-n6.pages.dev ]\n; Dashboard: 6.com.ly > DNS > Records > Import and Export > Import DNS records\n; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).\n6.com.ly.\t1\tIN\tCNAME\tcomly-n6.pages.dev. ; cf_tags=cf-proxied:true\n' },
+  { domain:'7.com.ly', target:'comly-n7.pages.dev', content:'; comm.ly network - Cloudflare Pages custom domain\n; Zone: 7.com.ly    Box: 7.com.ly  [ comly-n7.pages.dev ]\n; Dashboard: 7.com.ly > DNS > Records > Import and Export > Import DNS records\n; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).\n7.com.ly.\t1\tIN\tCNAME\tcomly-n7.pages.dev. ; cf_tags=cf-proxied:true\n' },
+  { domain:'8.com.ly', target:'comly-n8.pages.dev', content:'; comm.ly network - Cloudflare Pages custom domain\n; Zone: 8.com.ly    Box: 8.com.ly  [ comly-n8.pages.dev ]\n; Dashboard: 8.com.ly > DNS > Records > Import and Export > Import DNS records\n; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).\n8.com.ly.\t1\tIN\tCNAME\tcomly-n8.pages.dev. ; cf_tags=cf-proxied:true\n' },
+  { domain:'9.com.ly', target:'comly-n9.pages.dev', content:'; comm.ly network - Cloudflare Pages custom domain\n; Zone: 9.com.ly    Box: 9.com.ly  [ comly-n9.pages.dev ]\n; Dashboard: 9.com.ly > DNS > Records > Import and Export > Import DNS records\n; Keep "Proxy imported DNS records" enabled (Pages requires a proxied CNAME).\n9.com.ly.\t1\tIN\tCNAME\tcomly-n9.pages.dev. ; cf_tags=cf-proxied:true\n' }
+];
+
+const arabic = ['١','٢','٣','٤','٥','٦','٧'];
+const item = items[STEP];
+const filename = item.domain + '.txt';
+
+document.getElementById('stepLabel').textContent = `ملف DNS — ${arabic[STEP]} من ${arabic[items.length-1]}`;
+document.getElementById('domain').textContent = item.domain;
+document.getElementById('targetLabel').textContent = 'الوجهة: ' + item.target;
+document.getElementById('dns').textContent = item.target;
+document.getElementById('filename').textContent = 'اسم الملف: ' + filename;
+document.getElementById('progress').innerHTML = items.map((_,i)=>`<span class="dot ${i===STEP?'on':''}"></span>`).join('');
+if (item.note) {
+  const n = document.getElementById('note');
+  n.textContent = item.note;
+  n.hidden = false;
+}
+
+document.getElementById('box').addEventListener('click', () => {
+  const blob = new Blob([item.content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  const cta = document.getElementById('ctaText');
+  cta.textContent = 'تم التنزيل ✓ ' + filename;
+  cta.className = 'done';
+});
+</script>
+</body>
+</html>
